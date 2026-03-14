@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thulir Agency — Login</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💼</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1F3864;
+      --blue: #2E75B6;
+      --lblue: #D9E1F2;
+      --red: #C00000;
+      --grey: #F0F4F8;
+      --mid: #8492A6;
+      --font: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      min-height: 100vh;
+      background: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated background pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(46,117,182,0.4) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(46,117,182,0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 80%, rgba(31,56,100,0.6) 0%, transparent 50%);
+      z-index: 0;
+    }
+
+    /* Floating grid lines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: 0;
+    }
+
+    .login-wrapper {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 440px;
+      padding: 20px;
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Company header */
+    .company-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .company-logo {
+      width: 64px; height: 64px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 18px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px);
+    }
+    .company-name {
+      font-size: 24px; font-weight: 700; color: #fff;
+      letter-spacing: 0.5px; margin-bottom: 4px;
+    }
+    .company-addr {
+      font-size: 13px; color: rgba(255,255,255,0.5);
+    }
+
+    /* Card */
+    .login-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 20px;
+      padding: 36px 36px 32px;
+      box-shadow:
+        0 24px 80px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(255,255,255,0.1);
+    }
+
+    .card-title {
+      font-size: 18px; font-weight: 700; color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 13px; color: var(--mid); margin-bottom: 28px;
+    }
+
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: #4a5568; text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .input-icon {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%); font-size: 15px;
+      pointer-events: none;
+    }
+    input {
+      width: 100%; padding: 11px 12px 11px 38px;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; font-family: var(--font); color: #1a2332;
+      background: #fff; transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(46,117,182,0.12);
+    }
+    input.error { border-color: var(--red); }
+
+    .password-toggle {
+      position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%); background: none;
+      border: none; cursor: pointer; font-size: 16px;
+      color: var(--mid); padding: 4px;
+    }
+
+    .error-msg {
+      display: none; color: var(--red); font-size: 12px;
+      margin-top: 6px; font-weight: 500;
+    }
+    .error-msg.show { display: block; }
+
+    .login-btn {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--navy), var(--blue));
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; font-family: var(--font);
+      cursor: pointer; margin-top: 8px;
+      transition: opacity .2s, transform .1s;
+      letter-spacing: 0.3px;
+    }
+    .login-btn:hover  { opacity: 0.92; }
+    .login-btn:active { transform: scale(0.99); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .login-btn .spinner {
+      display: none; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    .login-btn.loading .btn-text { display: none; }
+    .login-btn.loading .spinner  { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 22px 0; color: var(--mid); font-size: 12px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+    }
+
+    /* Default credentials hint */
+    .hint-box {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 10px; padding: 12px 14px; margin-top: 20px;
+    }
+    .hint-box p { font-size: 12px; color: #1e40af; margin-bottom: 4px; font-weight: 600; }
+    .hint-box .cred {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px;
+    }
+    .hint-box .cred span {
+      font-family: var(--mono); font-size: 12px; color: #1e40af;
+      background: rgba(37,99,235,0.1); padding: 2px 8px; border-radius: 4px;
+    }
+
+    .footer-note {
+      text-align: center; margin-top: 20px;
+      font-size: 12px; color: rgba(255,255,255,0.35);
+    }
+
+    /* Shake animation for wrong password */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-6px); }
+      40%,80%  { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+  </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+  <!-- Company Header -->
+  <div class="company-header">
+    <div class="company-logo">💼</div>
+    <div class="company-name">THULIR AGENCY</div>
+    <div class="company-addr">Perundurai Road, Erode</div>
+  </div>
+
+  <!-- Login Card -->
+  <div class="login-card" id="loginCard">
+    <div class="card-title">Welcome back 👋</div>
+    <div class="card-sub">Sign in to access the Payroll Management System</div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <div class="input-wrap">
+        <span class="input-icon">👤</span>
+        <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+        <button class="password-toggle" id="pwToggle" type="button" onclick="togglePw()">👁️</button>
+      </div>
+      <div class="error-msg" id="errorMsg">❌ Incorrect username or password. Please try again.</div>
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">
+      <span class="btn-text">Sign In →</span>
+      <div class="spinner"></div>
+    </button>
+
+    <div class="hint-box">
+      <p>🔑 Default credentials (change after first login)</p>
+      <div class="cred">
+        <span>Username: admin</span>
+        <span>Password: thulir123</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Payroll Management System v1.0 · Data stored locally
+  </div>
+</div>
+
+<script>
+  // ── Auth helpers ─────────────────────────────────
+  const AUTH_KEY = 'prl_auth_users';
+  const SESSION_KEY = 'prl_session';
+
+  function getUsers() {
+    try {
+      const u = JSON.parse(localStorage.getItem(AUTH_KEY));
+      if (u && u.length) return u;
+    } catch {}
+    // Default user
+    return [{ username: 'admin', password: btoa('thulir123'), role: 'admin' }];
+  }
+
+  function isLoggedIn() {
+    const s = sessionStorage.getItem(SESSION_KEY);
+    return s && JSON.parse(s).loggedIn;
+  }
+
+  // Redirect if already logged in
+  if (isLoggedIn()) window.location.href = 'index.html';
+
+  // ── Enter key support ────────────────────────────
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('password').focus();
+  });
+
+  // ── Toggle password visibility ───────────────────
+  function togglePw() {
+    const inp = document.getElementById('password');
+    const btn = document.getElementById('pwToggle');
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else                         { inp.type = 'password'; btn.textContent = '👁️'; }
+  }
+
+  // ── Login logic ──────────────────────────────────
+  function doLogin() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('loginBtn');
+    const errMsg   = document.getElementById('errorMsg');
+    const card     = document.getElementById('loginCard');
+
+    errMsg.classList.remove('show');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    // Simulate slight delay for UX
+    setTimeout(() => {
+      const users = getUsers();
+      const user  = users.find(u => u.username === username && u.password === btoa(password));
+
+      if (user) {
+        // Save session (sessionStorage clears when browser tab closes)
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          loggedIn: true,
+          username: user.username,
+          role: user.role,
+          loginTime: new Date().toISOString()
+        }));
+        // Redirect to main app
+        window.location.href = 'index.html';
+      } else {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        errMsg.classList.add('show');
+        document.getElementById('password').classList.add('error');
+        card.classList.add('shake');
+        setTimeout(() => card.classList.remove('shake'), 400);
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    }, 600);
+  }
+</script>
+
+</body>
+</html>

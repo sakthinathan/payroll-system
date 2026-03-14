@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payroll Management System</title>
+  <title>Thulir Agency — Payroll Management</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💼</text></svg>">
 </head>
@@ -14,8 +14,8 @@
   <!-- ── SIDEBAR ─────────────────────────────────── -->
   <aside id="sidebar">
     <div class="sidebar-logo">
-      <h1>💼 PayrollPro</h1>
-      <span>Salary Management System</span>
+      <h1>💼 Thulir Agency</h1>
+      <span>Payroll Management System</span>
     </div>
 
     <div class="nav-section">Overview</div>
@@ -42,6 +42,11 @@
       <a href="#" data-page="payslip"><span class="icon">🧾</span> Payslip</a>
     </nav>
 
+    <div class="nav-section">Data</div>
+    <nav>
+      <a href="#" data-page="backup"><span class="icon">💾</span> Backup & Restore</a>
+    </nav>
+
     <div class="sidebar-footer">
       Data stored locally in browser<br>
       <span style="color:rgba(255,255,255,0.5)">v1.0 · 26 Employees</span>
@@ -52,7 +57,14 @@
   <main id="main">
     <div id="topbar">
       <h2 id="pageTitle">Dashboard</h2>
-      <div class="meta" id="topbarDate"></div>
+      <div class="flex-gap">
+        <div class="meta" id="topbarDate"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-left:16px;padding-left:16px;border-left:1px solid #e2e8f0">
+          <span id="loggedInUser" style="font-size:12px;color:var(--mid);font-weight:500"></span>
+          <button onclick="navigate('changepw')" style="background:var(--grey);border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--font)">🔑 Change Password</button>
+          <button onclick="doLogout()" style="background:#fee2e2;color:var(--red);border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-weight:600;font-family:var(--font)">⬅️ Logout</button>
+        </div>
+      </div>
     </div>
     <div id="content"></div>
   </main>
@@ -65,6 +77,23 @@
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
 <script>
+  // ── Auth guard ───────────────────────────────────
+  const SESSION_KEY = 'prl_session';
+  function getSession() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {} } catch { return {} } }
+
+  // Redirect to login if not authenticated
+  if (!getSession().loggedIn) window.location.href = 'login.html';
+
+  // Show logged in user
+  const sess = getSession();
+  document.getElementById('loggedInUser').textContent = '👤 ' + (sess.username || 'admin');
+
+  // Logout
+  function doLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    window.location.href = 'login.html';
+  }
+
   // Date in topbar
   document.getElementById('topbarDate').textContent =
     new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
