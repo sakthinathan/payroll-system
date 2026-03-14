@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payroll Management System</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💼</text></svg>">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── SIDEBAR ─────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <h1>💼 PayrollPro</h1>
+      <span>Salary Management System</span>
+    </div>
+
+    <div class="nav-section">Overview</div>
+    <nav>
+      <a href="#" data-page="dashboard"><span class="icon">📊</span> Dashboard</a>
+    </nav>
+
+    <div class="nav-section">Master Data</div>
+    <nav>
+      <a href="#" data-page="employees"><span class="icon">👥</span> Employees</a>
+      <a href="#" data-page="bank"><span class="icon">🏦</span> Bank Master</a>
+    </nav>
+
+    <div class="nav-section">Transactions</div>
+    <nav>
+      <a href="#" data-page="weekly"><span class="icon">📅</span> Weekly Entry</a>
+      <a href="#" data-page="advances"><span class="icon">💰</span> Advance Log</a>
+      <a href="#" data-page="shortages"><span class="icon">⚠️</span> Shortage Log</a>
+    </nav>
+
+    <div class="nav-section">Reports</div>
+    <nav>
+      <a href="#" data-page="deductions"><span class="icon">📋</span> Deduction Master</a>
+      <a href="#" data-page="payslip"><span class="icon">🧾</span> Payslip</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      Data stored locally in browser<br>
+      <span style="color:rgba(255,255,255,0.5)">v1.0 · 26 Employees</span>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ────────────────────────────────────── -->
+  <main id="main">
+    <div id="topbar">
+      <h2 id="pageTitle">Dashboard</h2>
+      <div class="meta" id="topbarDate"></div>
+    </div>
+    <div id="content"></div>
+  </main>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+  // Date in topbar
+  document.getElementById('topbarDate').textContent =
+    new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+</script>
+
+</body>
+</html>
