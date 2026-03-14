@@ -1,6 +1,6 @@
 // ── PayrollDB: all localStorage operations ──────────────────────
 const DB = {
-  KEYS: { employees:'prl_employees', advances:'prl_advances', shortages:'prl_shortages', weekly:'prl_weekly', bank:'prl_bank' },
+  KEYS: { employees:'prl_employees', advances:'prl_advances', shortages:'prl_shortages', weekly:'prl_weekly', bank:'prl_bank', settings:'prl_settings' },
 
   get(key)       { try { return JSON.parse(localStorage.getItem(key)) || [] } catch { return [] } },
   set(key, data) { localStorage.setItem(key, JSON.stringify(data)) },
@@ -17,8 +17,14 @@ const DB = {
   saveWeekly(d)     { this.set(this.KEYS.weekly, d) },
   saveBank(d)       { this.set(this.KEYS.bank, d) },
 
+  // ── Global Settings ───────────────────────────────
+  getSettings()     { try { return JSON.parse(localStorage.getItem(this.KEYS.settings)) || {} } catch { return {} } },
+  saveSettings(d)   { localStorage.setItem(this.KEYS.settings, JSON.stringify(d)) },
+  getWorkingDays()  { return Number(this.getSettings().workingDays) || 26 },
+  setWorkingDays(n) { const s = this.getSettings(); s.workingDays = Number(n); this.saveSettings(s); },
+
   // ── Computed helpers ──────────────────────────────
-  perDay(emp)  { return emp.salary / (emp.workingDays || 26) },
+  perDay(emp)  { return emp.salary / DB.getWorkingDays() },
 
   totalAdvanceGiven(name)     { return this.advances().filter(a=>a.name===name).reduce((s,a)=>s+Number(a.amount),0) },
   totalShortageGiven(name)    { return this.shortages().filter(a=>a.name===name).reduce((s,a)=>s+Number(a.amount),0) },
@@ -49,7 +55,7 @@ const DB = {
       ["SELVI THANGAMANI",17000],["SARANYA P",18000],["MATHI",18000],
       ["KEERTHANA S",20000],["SIVAPRASANTH GOVINDARAJ",16500],
     ];
-    this.saveEmployees(names.map(([name,salary],i)=>({id:i+1,name,salary,workingDays:26})));
+    this.saveEmployees(names.map(([name,salary],i)=>({id:i+1,name,salary})));
 
     const bankData = [
       ["KRISHNAMOORTHI R","SBI","20371096416","SBIN0000837","Erode"],

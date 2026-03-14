@@ -57,7 +57,8 @@ function navigate(page) {
     dashboard:'📊 Dashboard', employees:'👥 Employee Master',
     weekly:'📅 Weekly Entry', advances:'💰 Advance Log',
     shortages:'⚠️ Shortage Log', deductions:'📋 Deduction Master',
-    bank:'🏦 Bank Master', payslip:'🧾 Payslip Generator'
+    bank:'🏦 Bank Master', payslip:'🧾 Payslip Generator',
+    backup:'💾 Backup & Restore'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   document.getElementById('content').innerHTML = '';
@@ -171,39 +172,60 @@ route('dashboard', () => {
 route('employees', () => {
   function render() {
     const emps = DB.employees();
-    const q = document.getElementById('empSearch')?.value?.toLowerCase()||'';
+    const wd   = DB.getWorkingDays();
+    const q    = document.getElementById('empSearch')?.value?.toLowerCase()||'';
     const filtered = emps.filter(e=>e.name.toLowerCase().includes(q));
     document.getElementById('empTableBody').innerHTML = filtered.map(e=>`
       <tr>
         <td><strong style="font-size:12px;color:var(--navy)">${e.name}</strong></td>
         <td class="amt amt-blue">${fmt(e.salary)}</td>
-        <td style="text-align:center">${e.workingDays||26}</td>
-        <td class="amt">${fmt((e.salary/(e.workingDays||26)).toFixed(2))}</td>
+        <td class="amt">${fmt((e.salary/wd).toFixed(2))}</td>
         <td>
           <div class="flex-gap">
             <button class="btn btn-ghost btn-sm" onclick="editEmp('${e.id}')">✏️ Edit</button>
             <button class="btn btn-danger btn-sm" onclick="deleteEmp('${e.id}')">🗑️</button>
           </div>
         </td>
-      </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--mid)">No employees found</td></tr>`;
+      </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--mid)">No employees found</td></tr>`;
 
     const total = emps.reduce((s,e)=>s+e.salary,0);
     document.getElementById('empTotal').textContent = fmt(total);
+    document.getElementById('wdDisplay').textContent = wd;
   }
 
   document.getElementById('content').innerHTML = `
+    <!-- Working Days Setting Banner -->
+    <div style="background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:14px;padding:20px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">📅 This Month's Working Days</div>
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span id="wdDisplay" style="font-size:42px;font-weight:800;color:#fff;font-family:var(--mono);line-height:1">${DB.getWorkingDays()}</span>
+          <span style="color:rgba(255,255,255,0.6);font-size:13px">days &nbsp;·&nbsp; Per day salary updates for all 26 employees automatically</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="wdInput" type="number" min="1" max="31" value="${DB.getWorkingDays()}"
+          style="width:72px;text-align:center;font-size:20px;font-weight:700;padding:8px;border-radius:8px;border:none;font-family:var(--mono)">
+        <button class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3)" onclick="saveWD()">✅ Update</button>
+      </div>
+    </div>
+
     <div class="toolbar">
       <div class="search-box"><input id="empSearch" placeholder="Search employees..." oninput="empSearchFn()"></div>
       <div class="flex-gap">
+        <span style="font-size:12px;color:var(--mid)">Total Payroll: </span>
         <span id="empTotal" style="font-weight:700;color:var(--navy);font-family:var(--mono)"></span>
         <button class="btn btn-primary" onclick="addEmp()">+ Add Employee</button>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-header"><h3>All Employees</h3><span style="font-size:12px;opacity:.7">${DB.employees().length} employees</span></div>
+      <div class="panel-header">
+        <h3>All Employees</h3>
+        <span style="font-size:12px;opacity:.7">${DB.employees().length} employees · <span id="wdHeaderNote">${DB.getWorkingDays()} working days this month</span></span>
+      </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Monthly Salary</th><th>Working Days</th><th>Per Day Salary</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Monthly Salary</th><th>Per Day Salary (this month)</th><th>Actions</th></tr></thead>
           <tbody id="empTableBody"></tbody>
         </table>
       </div>
@@ -212,18 +234,25 @@ route('employees', () => {
 
   window.empSearchFn = render;
 
+  window.saveWD = () => {
+    const val = Number(document.getElementById('wdInput').value);
+    if (!val || val < 1 || val > 31) { toast('Enter a valid number between 1 and 31', 'error'); return; }
+    DB.setWorkingDays(val);
+    toast(`Working days updated to ${val} ✅`);
+    render();
+    document.getElementById('wdHeaderNote').textContent = `${val} working days this month`;
+  };
+
   window.addEmp = () => modal('Add New Employee', `
     <div class="form-grid cols2">
       <div class="form-group"><label>Employee Name</label><input id="eName" placeholder="Full name in CAPS"></div>
       <div class="form-group"><label>Monthly Salary (₹)</label><input id="eSal" type="number" placeholder="e.g. 18000"></div>
-      <div class="form-group"><label>Working Days/Month</label><input id="eWd" type="number" value="26" min="1" max="31"></div>
     </div>`, ov => {
-    const name = ov.querySelector('#eName').value.trim().toUpperCase();
+    const name   = ov.querySelector('#eName').value.trim().toUpperCase();
     const salary = Number(ov.querySelector('#eSal').value);
-    const wd = Number(ov.querySelector('#eWd').value)||26;
     if (!name||!salary) { toast('Name and salary required','error'); return false; }
     const emps = DB.employees();
-    emps.push({id:uid(), name, salary, workingDays:wd});
+    emps.push({id:uid(), name, salary});
     DB.saveEmployees(emps); toast('Employee added ✅'); render(); return true;
   });
 
@@ -234,12 +263,12 @@ route('employees', () => {
       <div class="form-grid cols2">
         <div class="form-group"><label>Name</label><input id="eName" value="${e.name}"></div>
         <div class="form-group"><label>Monthly Salary (₹)</label><input id="eSal" type="number" value="${e.salary}"></div>
-        <div class="form-group"><label>Working Days</label><input id="eWd" type="number" value="${e.workingDays||26}"></div>
       </div>`, ov => {
       const emps = DB.employees();
-      const idx = emps.findIndex(x=>x.id==id);
-      emps[idx] = {...emps[idx], name:ov.querySelector('#eName').value.trim().toUpperCase(),
-        salary:Number(ov.querySelector('#eSal').value), workingDays:Number(ov.querySelector('#eWd').value)||26};
+      const idx  = emps.findIndex(x=>x.id==id);
+      emps[idx]  = {...emps[idx],
+        name:   ov.querySelector('#eName').value.trim().toUpperCase(),
+        salary: Number(ov.querySelector('#eSal').value)};
       DB.saveEmployees(emps); toast('Saved ✅'); render(); return true;
     });
   };
@@ -294,7 +323,7 @@ route('weekly', () => {
       <button class="btn btn-primary" onclick="addWeek()">+ Add Entry</button>
     </div>
     <div class="panel">
-      <div class="panel-header"><h3>Weekly Attendance & Salary</h3></div>
+      <div class="panel-header"><h3>Weekly Attendance & Salary</h3><span style="font-size:12px;opacity:.7">Working days this month: <strong>${DB.getWorkingDays()}</strong> · Change in Employees tab</span></div>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>Week</th><th>Employee</th><th>Days</th><th>Leaves</th><th>Adv Deducted</th><th>Shr Deducted</th><th>Adv Pending</th><th>Shr Pending</th><th>Week Salary</th><th>Actions</th></tr></thead>
@@ -668,8 +697,8 @@ route('payslip', () => {
     document.getElementById('payslipOut').innerHTML = `
       <div class="payslip">
         <div class="payslip-header">
-          <h2>YOUR COMPANY NAME</h2>
-          <p>Address, Erode · hr@company.com</p>
+          <h2>THULIR AGENCY</h2>
+          <p>Perundurai Road, Erode</p>
           <div class="payslip-badge">SALARY SLIP — ${weekLabel||'All Weeks'}</div>
         </div>
         <div class="payslip-body">
@@ -744,6 +773,279 @@ route('payslip', () => {
 
   // Auto-generate for first employee
   if (emps.length) renderPayslip(emps[0].name, '');
+});
+
+// ════════════════════════════════════════════════════════════════
+// BACKUP & RESTORE
+// ════════════════════════════════════════════════════════════════
+route('backup', () => {
+  function getStats() {
+    return {
+      employees: DB.employees().length,
+      weekly:    DB.weekly().length,
+      advances:  DB.advances().length,
+      shortages: DB.shortages().length,
+      bank:      DB.bank().length,
+    };
+  }
+
+  function sizeStr(obj) {
+    const bytes = new Blob([JSON.stringify(obj)]).size;
+    return bytes < 1024 ? `${bytes} B` : `${(bytes/1024).toFixed(1)} KB`;
+  }
+
+  function renderStats() {
+    const s = getStats();
+    const all = {
+      employees: DB.employees(), weekly: DB.weekly(),
+      advances: DB.advances(), shortages: DB.shortages(), bank: DB.bank()
+    };
+    document.getElementById('backupStats').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px">
+        ${[
+          ['👥','Employees', s.employees],
+          ['📅','Weekly Entries', s.weekly],
+          ['💰','Advances', s.advances],
+          ['⚠️','Shortages', s.shortages],
+          ['🏦','Bank Records', s.bank],
+        ].map(([icon,label,count])=>`
+          <div style="background:var(--grey);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:24px">${icon}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--navy);font-family:var(--mono)">${count}</div>
+            <div style="font-size:11px;color:var(--mid)">${label}</div>
+          </div>`).join('')}
+      </div>
+      <div style="background:var(--lgreen);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--green);margin-bottom:4px">
+        📦 Total backup size: <strong>${sizeStr(all)}</strong> &nbsp;|&nbsp;
+        Last backup: <strong id="lastBackupTime">${localStorage.getItem('prl_last_backup')||'Never'}</strong>
+      </div>`;
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div style="max-width:720px;margin:0 auto">
+
+      <!-- Stats -->
+      <div id="backupStats"></div>
+
+      <!-- Export -->
+      <div class="panel">
+        <div class="panel-header" style="background:var(--navy)">
+          <h3>💾 Export Backup</h3>
+          <span style="font-size:12px;opacity:.7">Download all your data as a JSON file</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:13px;color:#444;margin-bottom:18px;line-height:1.7">
+            Clicking <strong>Export Backup</strong> will download a <code style="background:var(--grey);padding:2px 6px;border-radius:4px">.json</code> file
+            containing <strong>all your payroll data</strong> — employees, weekly entries, advances, shortages, and bank details.
+            Save this file somewhere safe (Google Drive, USB, Email to yourself).
+          </p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="doExport()">⬇️ Download Backup File</button>
+            <button class="btn btn-ghost" onclick="doExportCSV()">📊 Export as CSV (Excel)</button>
+          </div>
+          <div style="margin-top:14px;background:var(--yellow);border-radius:8px;padding:10px 14px;font-size:12px">
+            💡 <strong>Tip:</strong> Do a backup every Friday before closing the browser. Name the file with the date, e.g.
+            <code>payroll-backup-14-Jun-2025.json</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import -->
+      <div class="panel">
+        <div class="panel-header" style="background:#1a4731">
+          <h3>📂 Restore from Backup</h3>
+          <span style="font-size:12px;opacity:.7">Load a previously exported backup file</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:13px;color:#444;margin-bottom:18px;line-height:1.7">
+            Select a <code style="background:var(--grey);padding:2px 6px;border-radius:4px">.json</code> backup file you previously exported.
+            <strong style="color:var(--red)">This will replace all current data</strong> with the data from the backup file.
+          </p>
+          <div style="border:2px dashed #cbd5e0;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s"
+               id="dropZone"
+               onclick="document.getElementById('restoreFile').click()"
+               ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+               ondragleave="this.style.borderColor='#cbd5e0'"
+               ondrop="handleDrop(event)">
+            <div style="font-size:40px;margin-bottom:8px">📁</div>
+            <div style="font-weight:600;color:var(--navy);margin-bottom:4px">Click to choose backup file</div>
+            <div style="font-size:12px;color:var(--mid)">or drag and drop your .json file here</div>
+            <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="handleFileSelect(this)">
+          </div>
+          <div id="restorePreview" style="margin-top:16px"></div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="panel" style="border:2px solid #fee2e2">
+        <div class="panel-header" style="background:#7f1d1d">
+          <h3>⚠️ Danger Zone</h3>
+          <span style="font-size:12px;opacity:.7">Irreversible actions</span>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:13px;color:#444;margin-bottom:16px">
+            <strong style="color:var(--red)">Clear All Data</strong> will permanently delete everything —
+            all employees, weekly entries, advances, shortages, and bank details.
+            This cannot be undone. Make sure you have a backup first.
+          </p>
+          <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+        </div>
+      </div>
+
+    </div>`;
+
+  renderStats();
+
+  // ── Export JSON ──────────────────────────────────
+  window.doExport = () => {
+    const backup = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      exportedAtReadable: new Date().toLocaleString('en-IN'),
+      data: {
+        employees: DB.employees(),
+        weekly:    DB.weekly(),
+        advances:  DB.advances(),
+        shortages: DB.shortages(),
+        bank:      DB.bank(),
+        settings:  DB.getSettings(),
+      }
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-');
+    a.href = url; a.download = `payroll-backup-${date}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    const now = new Date().toLocaleString('en-IN');
+    localStorage.setItem('prl_last_backup', now);
+    document.getElementById('lastBackupTime').textContent = now;
+    toast('Backup downloaded ✅');
+  };
+
+  // ── Export CSV ───────────────────────────────────
+  window.doExportCSV = () => {
+    const rows = [['Employee','Week','Date','Days Worked','Leaves','Adv Deducted','Shr Deducted','Adv Pending','Shr Pending','Week Salary']];
+    DB.weekly().forEach(w => {
+      rows.push([
+        w.name, w.weekLabel||'', w.date||'',
+        w.daysWorked||0, w.leaves||0,
+        w.advDeducted||0, w.shrDeducted||0,
+        DB.advancePending(w.name), DB.shortagePending(w.name),
+        DB.weekSalary(w).toFixed(2)
+      ]);
+    });
+    const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-');
+    a.href = url; a.download = `payroll-weekly-${date}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('CSV exported ✅');
+  };
+
+  // ── File select / drag-drop ──────────────────────
+  window.handleDrop = e => {
+    e.preventDefault();
+    document.getElementById('dropZone').style.borderColor = '#cbd5e0';
+    const file = e.dataTransfer.files[0];
+    if (file) readBackupFile(file);
+  };
+
+  window.handleFileSelect = input => {
+    if (input.files[0]) readBackupFile(input.files[0]);
+  };
+
+  function readBackupFile(file) {
+    if (!file.name.endsWith('.json')) { toast('Please select a .json backup file', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup.data) throw new Error('Invalid backup format');
+        const d = backup.data;
+        const preview = document.getElementById('restorePreview');
+        preview.innerHTML = `
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px">
+            <div style="font-weight:600;color:var(--green);margin-bottom:10px">✅ Valid backup file detected</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+              ${[
+                ['Exported on', backup.exportedAtReadable||fmtDate(backup.exportedAt)],
+                ['Employees',   (d.employees||[]).length + ' records'],
+                ['Weekly Entries', (d.weekly||[]).length + ' records'],
+                ['Advances',    (d.advances||[]).length + ' records'],
+                ['Shortages',   (d.shortages||[]).length + ' records'],
+                ['Bank Records',(d.bank||[]).length + ' records'],
+              ].map(([l,v])=>`<div style="font-size:12px"><span style="color:var(--mid)">${l}:</span> <strong>${v}</strong></div>`).join('')}
+            </div>
+            <div style="background:#fef3c7;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:14px">
+              ⚠️ This will <strong>replace all current data</strong>. Make sure you have exported your current backup first.
+            </div>
+            <button class="btn btn-success" onclick="confirmRestore(${JSON.stringify(backup).replace(/"/g,'&quot;')})">
+              ✅ Restore This Backup
+            </button>
+          </div>`;
+      } catch(err) {
+        toast('Invalid backup file — please use a file exported from this app', 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  window.confirmRestore = (backup) => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal" style="max-width:400px">
+      <div class="modal-header"><h3>⚠️ Confirm Restore</h3></div>
+      <p style="font-size:13px;margin-bottom:8px">Are you sure you want to restore this backup?</p>
+      <p style="font-size:13px;color:var(--red);margin-bottom:20px"><strong>All current data will be permanently replaced.</strong></p>
+      <div class="flex-gap" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-success btn-sm" id="doRestoreBtn">✅ Yes, Restore</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#doRestoreBtn').onclick = () => {
+      const d = backup.data;
+      if (d.employees) DB.saveEmployees(d.employees);
+      if (d.weekly)    DB.saveWeekly(d.weekly);
+      if (d.advances)  DB.saveAdvances(d.advances);
+      if (d.shortages) DB.saveShortages(d.shortages);
+      if (d.bank)      DB.saveBank(d.bank);
+      if (d.settings)  DB.saveSettings(d.settings);
+      ov.remove();
+      toast('Backup restored successfully ✅');
+      renderStats();
+      document.getElementById('restorePreview').innerHTML = '';
+    };
+  };
+
+  // ── Clear all data ───────────────────────────────
+  window.clearAllData = () => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `<div class="modal" style="max-width:400px">
+      <div class="modal-header"><h3 style="color:var(--red)">🗑️ Clear All Data</h3></div>
+      <p style="font-size:13px;margin-bottom:8px">This will permanently delete <strong>all employees, entries, advances, shortages and bank details</strong>.</p>
+      <p style="font-size:13px;margin-bottom:6px">Type <strong>DELETE</strong> to confirm:</p>
+      <input id="confirmInput" placeholder="Type DELETE" style="margin-bottom:16px;width:100%">
+      <div class="flex-gap" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-danger btn-sm" id="doClearBtn">🗑️ Clear Everything</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#doClearBtn').onclick = () => {
+      if (ov.querySelector('#confirmInput').value.trim() !== 'DELETE') {
+        toast('Type DELETE to confirm', 'error'); return;
+      }
+      Object.values(DB.KEYS).forEach(k => localStorage.removeItem(k));
+      ov.remove();
+      toast('All data cleared', 'error');
+      renderStats();
+    };
+  };
 });
 
 // ════════════════════════════════════════════════════════════════
