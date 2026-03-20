@@ -4,15 +4,15 @@ import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 
-// ── PAYROLL PERIODS (Archive page) ───────────────────────────────
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+// ── PAYROLL PERIODS (Archive page) ───────────────────────────────
 export function Periods() {
-  const [periods, setPeriods]     = useState([])
-  const [emps, setEmps]           = useState([])
-  const [wd, setWd]               = useState(26)
-  const [loading, setLoading]     = useState(true)
-  const [viewModal, setViewModal] = useState(null)
+  const [periods, setPeriods]         = useState([])
+  const [emps, setEmps]               = useState([])
+  const [wd, setWd]                   = useState(26)
+  const [loading, setLoading]         = useState(true)
+  const [viewModal, setViewModal]     = useState(null)
   const [viewEntries, setViewEntries] = useState([])
 
   const load = useCallback(async () => {
@@ -125,55 +125,326 @@ export function Periods() {
 function InlineCell({ value, onSave, min = 0, max, color }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal]         = useState(value)
-
   useEffect(() => { setVal(value) }, [value])
-
   const commit = () => {
     setEditing(false)
     const num = Number(val)
     if (num !== value) onSave(num)
   }
-
   if (editing) {
     return (
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={val}
-        autoFocus
-        onChange={e => setVal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={e => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') { setVal(value); setEditing(false) }
-        }}
-        style={{
-          width: 68, textAlign: 'center', padding: '4px 6px',
-          border: '2px solid var(--blue)', borderRadius: 6,
-          fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600,
-          outline: 'none', background: '#eff6ff'
-        }}
+      <input type="number" min={min} max={max} value={val} autoFocus
+        onChange={e => setVal(e.target.value)} onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setVal(value); setEditing(false) } }}
+        style={{ width: 68, textAlign: 'center', padding: '4px 6px', border: '2px solid var(--blue)', borderRadius: 6, fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600, outline: 'none', background: '#eff6ff' }}
       />
     )
   }
-
   return (
-    <span
-      onClick={() => setEditing(true)}
-      title="Click to edit"
-      style={{
-        cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13,
-        fontWeight: 600, color: color || 'inherit',
-        padding: '4px 10px', borderRadius: 6, display: 'inline-block',
-        border: '1.5px dashed transparent', transition: 'all .15s',
-        minWidth: 40, textAlign: 'center'
-      }}
+    <span onClick={() => setEditing(true)} title="Click to edit"
+      style={{ cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600, color: color || 'inherit', padding: '4px 10px', borderRadius: 6, display: 'inline-block', border: '1.5px dashed transparent', transition: 'all .15s', minWidth: 40, textAlign: 'center' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--blue)'; e.currentTarget.style.background = '#eff6ff' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent' }}
-    >
-      {value}
-    </span>
+    >{value}</span>
+  )
+}
+
+// ── EXCEL DOWNLOAD ────────────────────────────────────────────────
+function downloadPayrollExcel(label, entries, emps, wd) {
+  const rows = []
+  rows.push(['THULIR AGENCY — PAYROLL'])
+  rows.push([label])
+  rows.push([`Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`])
+  rows.push([])
+  rows.push(['S.No', 'Employee Name', 'Net Salary (₹)'])
+  let total = 0
+  entries.forEach((w, i) => {
+    const emp = emps.find(e => e.name === w.name)
+    const salary = Math.round(DB.weekSalary(w, emp, wd))
+    total += salary
+    rows.push([i + 1, w.name, salary])
+  })
+  rows.push([])
+  rows.push(['', 'TOTAL', total])
+  const csv  = rows.map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = `${label.replace(/\s+/g, '-')}-Payroll.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
+
+// ── PRINT PAYROLL SHEET ───────────────────────────────────────────
+function PrintPayrollSheet({ label, entries, emps, bankList, wd, onClose }) {
+  const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+  let grandTotal = 0
+  const rows = entries.map((w, i) => {
+    const emp    = emps.find(e => e.name === w.name)
+    const bank   = bankList.find(b => b.name === w.name) || {}
+    const salary = Math.round(DB.weekSalary(w, emp, wd))
+    grandTotal  += salary
+    return { i: i + 1, name: w.name, bank: bank.bank || '—', acc: bank.acc || '—', ifsc: bank.ifsc || '—', salary }
+  })
+
+  const print = () => window.print()
+
+  return (
+    <>
+      {/* Print styles injected into head */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #print-sheet, #print-sheet * { visibility: visible !important; }
+          #print-sheet { position: fixed; top: 0; left: 0; width: 100%; z-index: 99999; background: #fff; }
+          #print-no-print { display: none !important; }
+        }
+      `}</style>
+
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="modal modal-wide" style={{ maxWidth: 800, maxHeight: '90vh', overflow: 'auto' }}>
+
+          {/* Action buttons — hidden on print */}
+          <div id="print-no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>🖨️ Print Payroll Sheet — {label}</h3>
+            <div className="flex-gap">
+              <button className="btn btn-primary" onClick={print}>🖨️ Print</button>
+              <button className="btn btn-ghost" onClick={onClose}>✕ Close</button>
+            </div>
+          </div>
+
+          {/* Printable sheet */}
+          <div id="print-sheet" style={{ background: '#fff', fontFamily: 'Arial, sans-serif' }}>
+
+            {/* Header */}
+            <div style={{ textAlign: 'center', borderBottom: '3px double #1F3864', paddingBottom: 12, marginBottom: 16 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#1F3864', letterSpacing: 1 }}>THULIR AGENCY</div>
+              <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>Perundurai Road, Erode</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 8, color: '#1F3864' }}>SALARY PAYMENT SHEET — {label.toUpperCase()}</div>
+              <div style={{ fontSize: 11, color: '#777', marginTop: 2 }}>Date: {today}</div>
+            </div>
+
+            {/* Table */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: '#1F3864', color: '#fff' }}>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center', width: 32 }}>S.No</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'left' }}>Employee Name</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>Bank</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>Account No.</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center' }}>IFSC</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'right', width: 90 }}>Net Salary (₹)</th>
+                  <th style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'center', width: 90 }}>Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
+                  <tr key={r.name} style={{ background: idx % 2 === 0 ? '#f9fbff' : '#fff' }}>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', textAlign: 'center', color: '#555' }}>{r.i}</td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', textAlign: 'center', color: '#555' }}>{r.bank}</td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{r.acc}</td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{r.ifsc}</td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd', textAlign: 'right', fontWeight: 700, color: '#166534' }}>
+                      {r.salary.toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ padding: '7px 6px', border: '1px solid #ddd' }}></td>
+                  </tr>
+                ))}
+                {/* Total row */}
+                <tr style={{ background: '#1F3864', color: '#fff', fontWeight: 700 }}>
+                  <td colSpan={5} style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'right', fontSize: 12 }}>GRAND TOTAL</td>
+                  <td style={{ padding: '8px 6px', border: '1px solid #ccc', textAlign: 'right', fontSize: 13, color: '#86efac' }}>
+                    ₹{grandTotal.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ border: '1px solid #ccc' }}></td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Footer */}
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, fontSize: 11 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ borderTop: '1px solid #333', paddingTop: 6, marginTop: 24 }}>Prepared By</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ borderTop: '1px solid #333', paddingTop: 6, marginTop: 24 }}>Checked By</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ borderTop: '1px solid #333', paddingTop: 6, marginTop: 24 }}>Authorised By</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: 'center', fontSize: 10, color: '#aaa', borderTop: '1px solid #eee', paddingTop: 8 }}>
+              Computer generated payroll sheet · Thulir Agency · {today}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── WHATSAPP BULK SENDER ──────────────────────────────────────────
+function WhatsAppBulkModal({ label, entries, emps, bankList, wd, onClose }) {
+  const [current, setCurrent] = useState(0)
+  const [sent, setSent]       = useState(new Set())
+
+  const rows = entries.map(w => {
+    const emp    = emps.find(e => e.name === w.name)
+    const bank   = bankList.find(b => b.name === w.name) || {}
+    const salary = Math.round(DB.weekSalary(w, emp, wd))
+    return { ...w, bank, salary, phone: bank.phone || '' }
+  })
+
+  const withPhone    = rows.filter(r => r.phone)
+  const withoutPhone = rows.filter(r => !r.phone)
+
+  const buildMsg = (r) => [
+    `🏢 *THULIR AGENCY*`,
+    `📍 Perundurai Road, Erode`,
+    ``,
+    `📄 *SALARY SLIP — ${label}*`,
+    ``,
+    `👤 *${r.name}*`,
+    `✅ *Days Worked:* ${Number(r.days_worked || 0) - Number(r.leaves || 0)} days`,
+    `💸 *Advance Deducted:* ₹${Number(r.adv_deducted || 0).toLocaleString('en-IN')}`,
+    `⚠️ *Shortage Deducted:* ₹${Number(r.shr_deducted || 0).toLocaleString('en-IN')}`,
+    ``,
+    `━━━━━━━━━━━━━━━━`,
+    `💰 *NET SALARY: ₹${r.salary.toLocaleString('en-IN')}*`,
+    `━━━━━━━━━━━━━━━━`,
+    ``,
+    `🏦 *Bank:* ${r.bank.bank || '—'}`,
+    `🔢 *A/C:* ${r.bank.acc || '—'}`,
+    `📋 *IFSC:* ${r.bank.ifsc || '—'}`,
+    ``,
+    `_Thulir Agency Payroll System_`,
+  ].join('\n')
+
+  const sendNext = () => {
+    const row = withPhone[current]
+    if (!row) return
+    const msg = buildMsg(row)
+    const url = `https://wa.me/91${row.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+    setSent(s => new Set([...s, row.name]))
+    if (current + 1 < withPhone.length) setCurrent(c => c + 1)
+  }
+
+  const sendAll = () => {
+    // Open first unsent
+    const nextIdx = withPhone.findIndex(r => !sent.has(r.name))
+    if (nextIdx === -1) return
+    setCurrent(nextIdx)
+    const row = withPhone[nextIdx]
+    const msg = buildMsg(row)
+    const url = `https://wa.me/91${row.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+    setSent(s => new Set([...s, row.name]))
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-wide" style={{ maxWidth: 620 }}>
+        <div className="modal-header">
+          <h3>📱 WhatsApp Bulk Notification — {label}</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>{withPhone.length}</div>
+            <div style={{ fontSize: 11, color: '#15803d' }}>With Phone</div>
+          </div>
+          <div style={{ background: '#eff6ff', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--blue)' }}>{sent.size}</div>
+            <div style={{ fontSize: 11, color: 'var(--blue)' }}>Sent</div>
+          </div>
+          <div style={{ background: '#fef3c7', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#92400e' }}>{withPhone.length - sent.size}</div>
+            <div style={{ fontSize: 11, color: '#92400e' }}>Remaining</div>
+          </div>
+        </div>
+
+        {/* Send next button */}
+        {withPhone.length > 0 && sent.size < withPhone.length && (
+          <button onClick={sendAll}
+            style={{ width: '100%', padding: '13px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Send Next — {withPhone.find(r => !sent.has(r.name))?.name || 'All Sent!'}
+          </button>
+        )}
+
+        {sent.size === withPhone.length && withPhone.length > 0 && (
+          <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '12px 16px', textAlign: 'center', marginBottom: 16, color: '#166534', fontWeight: 600 }}>
+            ✅ All {withPhone.length} messages sent!
+          </div>
+        )}
+
+        {/* Employee list */}
+        <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: 'var(--navy)', color: '#fff', position: 'sticky', top: 0 }}>
+                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Employee</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Salary</th>
+                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Phone</th>
+                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Status</th>
+                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Send</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr key={r.name} style={{ borderBottom: '1px solid #f0f0f0', background: sent.has(r.name) ? '#f0fdf4' : idx % 2 === 0 ? '#fafbff' : '#fff' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{r.name}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'var(--mono)', color: '#166534', fontWeight: 700 }}>₹{r.salary.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', fontFamily: 'monospace' }}>
+                    {r.phone ? r.phone : <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                    {sent.has(r.name)
+                      ? <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 11 }}>✅ Sent</span>
+                      : r.phone
+                        ? <span style={{ color: '#f59e0b', fontSize: 11 }}>Pending</span>
+                        : <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                    {r.phone && !sent.has(r.name) && (
+                      <button onClick={() => {
+                        const msg = buildMsg(r)
+                        window.open(`https://wa.me/91${r.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank')
+                        setSent(s => new Set([...s, r.name]))
+                      }}
+                        style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                        📱 Send
+                      </button>
+                    )}
+                    {sent.has(r.name) && (
+                      <button onClick={() => {
+                        const msg = buildMsg(r)
+                        window.open(`https://wa.me/91${r.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank')
+                      }}
+                        style={{ background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}>
+                        🔁 Resend
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {withoutPhone.length > 0 && (
+          <div style={{ marginTop: 12, background: '#fef3c7', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#92400e' }}>
+            ⚠️ {withoutPhone.length} employees have no phone number: {withoutPhone.map(r => r.name).join(', ')}. Add phone in Bank Master.
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -183,6 +454,7 @@ export function Weekly() {
   const [emps, setEmps]                 = useState([])
   const [advances, setAdvances]         = useState([])
   const [shortages, setShortages]       = useState([])
+  const [bankList, setBankList]         = useState([])
   const [wd, setWd]                     = useState(26)
   const [activePeriod, setActivePeriod] = useState(null)
   const [loading, setLoading]           = useState(true)
@@ -192,6 +464,9 @@ export function Weekly() {
   const [bulkForm, setBulkForm]         = useState({ daysWorked: 6, leaves: 0, advDeducted: 0, shrDeducted: 0 })
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saving, setSaving]             = useState(null)
+  const [showPrint, setShowPrint]       = useState(false)
+  const [showWhatsApp, setShowWhatsApp] = useState(false)
+  const [closedData, setClosedData]     = useState(null) // stores data after close for print/WA
 
   const now = new Date()
   const [newPeriod, setNewPeriod] = useState({
@@ -210,12 +485,12 @@ export function Weekly() {
   }, [newPeriod.month, newPeriod.year, newPeriod.weekNum])
 
   const load = useCallback(async () => {
-    const [w, e, a, s, wdays, ap] = await Promise.all([
-      DB.weekly(), DB.employees(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod()
+    const [w, e, a, s, wdays, ap, b] = await Promise.all([
+      DB.weekly(), DB.employees(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod(), DB.bank()
     ])
     const periodEntries = ap ? w.filter(x => x.period_id === ap.id) : []
     setAllWeekly(periodEntries); setEmps(e); setAdvances(a); setShortages(s)
-    setWd(wdays); setActivePeriod(ap); setLoading(false)
+    setWd(wdays); setActivePeriod(ap); setBankList(b); setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -225,7 +500,6 @@ export function Weekly() {
   const totalPay     = allWeekly.reduce((s, w) => s + DB.weekSalary(w, emps.find(e => e.name === w.name), wd), 0)
   const filtered     = allWeekly.filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
 
-  // ── Inline save ───────────────────────────────────────────────
   const inlineSave = async (entry, field, newVal) => {
     setSaving(entry.id)
     await DB.updateWeekly({
@@ -237,51 +511,35 @@ export function Weekly() {
       shrDeducted: field === 'shr_deducted' ? newVal : entry.shr_deducted,
     })
     toast.success('Saved ✅', { duration: 1000 })
-    setSaving(null)
-    load()
+    setSaving(null); load()
   }
 
-  // ── Quick add (adds with defaults, then inline edit) ──────────
   const quickAdd = async (emp) => {
-    await DB.saveWeekly({
-      id: uid(), name: emp.name,
-      weekLabel: activePeriod.label, date: activePeriod.date_from,
-      daysWorked: 6, leaves: 0, advDeducted: 0, shrDeducted: 0,
-      periodId: activePeriod.id
-    })
-    toast.success(`${emp.name} added ✅`, { duration: 1000 })
-    load()
+    await DB.saveWeekly({ id: uid(), name: emp.name, weekLabel: activePeriod.label, date: activePeriod.date_from, daysWorked: 6, leaves: 0, advDeducted: 0, shrDeducted: 0, periodId: activePeriod.id })
+    toast.success(`${emp.name} added ✅`, { duration: 1000 }); load()
   }
 
-  // ── Bulk add ──────────────────────────────────────────────────
   const bulkAdd = async () => {
     for (const emp of pendingEmps) {
-      await DB.saveWeekly({
-        id: uid(), name: emp.name,
-        weekLabel: activePeriod.label, date: activePeriod.date_from,
-        ...bulkForm, periodId: activePeriod.id
-      })
+      await DB.saveWeekly({ id: uid(), name: emp.name, weekLabel: activePeriod.label, date: activePeriod.date_from, ...bulkForm, periodId: activePeriod.id })
     }
-    toast.success(`${pendingEmps.length} entries added ✅`)
-    setBulkModal(false); load()
+    toast.success(`${pendingEmps.length} entries added ✅`); setBulkModal(false); load()
   }
 
-  // ── Start period ──────────────────────────────────────────────
   const startPeriod = async () => {
     if (!newPeriod.dateFrom || !newPeriod.dateTo) { toast.error('Select dates'); return }
-    await DB.savePeriod({
-      id: uid(), label: newPeriod.label,
-      month_name: `${MONTHS[newPeriod.month]} ${newPeriod.year}`,
-      date_from: newPeriod.dateFrom, date_to: newPeriod.dateTo, status: 'open'
-    })
-    toast.success(`✅ "${newPeriod.label}" started!`)
-    load()
+    await DB.savePeriod({ id: uid(), label: newPeriod.label, month_name: `${MONTHS[newPeriod.month]} ${newPeriod.year}`, date_from: newPeriod.dateFrom, date_to: newPeriod.dateTo, status: 'open' })
+    toast.success(`✅ "${newPeriod.label}" started!`); load()
   }
 
   // ── Close payroll ─────────────────────────────────────────────
   const closePayroll = async () => {
     await DB.closePeriod(activePeriod.id, totalPay)
-    toast.success(`✅ "${activePeriod.label}" closed! Total: ${fmt(totalPay)}`)
+    // Save closed data for print/whatsapp use
+    setClosedData({ label: activePeriod.label, entries: [...allWeekly] })
+    // Auto download Excel
+    downloadPayrollExcel(activePeriod.label, allWeekly, emps, wd)
+    toast.success(`✅ "${activePeriod.label}" closed! Excel downloaded 📥`)
     setCloseConfirm(false)
     setActivePeriod(null); setAllWeekly([])
     load()
@@ -295,6 +553,28 @@ export function Weekly() {
   if (!activePeriod) {
     return (
       <Layout title="📅 Weekly Entry">
+        {/* Post-close actions — show if just closed */}
+        {closedData && (
+          <div style={{ background: 'linear-gradient(135deg,#166534,#15803d)', borderRadius: 12, padding: '18px 22px', marginBottom: 20, color: '#fff' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, opacity: .7, marginBottom: 4 }}>✅ Payroll Closed</div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>{closedData.label}</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button onClick={() => setShowPrint(true)}
+                style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                🖨️ Print Payroll Sheet
+              </button>
+              <button onClick={() => setShowWhatsApp(true)}
+                style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                📱 Send WhatsApp Notifications
+              </button>
+              <button onClick={() => setClosedData(null)}
+                style={{ background: 'rgba(255,255,255,.1)', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer' }}>
+                ✕ Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ maxWidth: 620, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', padding: '32px 0 24px' }}>
             <div style={{ fontSize: 52, marginBottom: 10 }}>📅</div>
@@ -343,14 +623,23 @@ export function Weekly() {
             </button>
           </Panel>
         </div>
+
+        {/* Print modal */}
+        {showPrint && closedData && (
+          <PrintPayrollSheet label={closedData.label} entries={closedData.entries} emps={emps} bankList={bankList} wd={wd} onClose={() => setShowPrint(false)} />
+        )}
+
+        {/* WhatsApp modal */}
+        {showWhatsApp && closedData && (
+          <WhatsAppBulkModal label={closedData.label} entries={closedData.entries} emps={emps} bankList={bankList} wd={wd} onClose={() => setShowWhatsApp(false)} />
+        )}
       </Layout>
     )
   }
 
-  // ── ACTIVE PERIOD → Inline edit table ────────────────────────
+  // ── ACTIVE PERIOD ─────────────────────────────────────────────
   return (
     <Layout title="📅 Weekly Entry">
-      {/* Period banner */}
       <div style={{ background: 'linear-gradient(135deg,#1F3864,#2E75B6)', borderRadius: 12, padding: '18px 22px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -363,8 +652,7 @@ export function Weekly() {
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {pendingEmps.length > 0 && (
-              <button className="btn" style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '1px solid rgba(255,255,255,.3)' }}
-                onClick={() => setBulkModal(true)}>
+              <button className="btn" style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '1px solid rgba(255,255,255,.3)' }} onClick={() => setBulkModal(true)}>
                 ⚡ Bulk Add ({pendingEmps.length} pending)
               </button>
             )}
@@ -385,7 +673,6 @@ export function Weekly() {
         </div>
       </div>
 
-      {/* Hint bar */}
       <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#1e40af', marginBottom: 16 }}>
         💡 <strong>Click any number</strong> in Days, Leaves, Adv Ded or Shr Ded to edit directly. Press <strong>Enter</strong> or click away to save instantly.
       </div>
@@ -423,44 +710,27 @@ export function Weekly() {
                       <strong style={{ fontSize: 12 }}>{w.name}</strong>
                       {saving === w.id && <span style={{ fontSize: 10, color: 'var(--blue)', marginLeft: 6 }}>saving...</span>}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <InlineCell value={Number(w.days_worked || 0)} max={7} onSave={v => inlineSave(w, 'days_worked', v)} />
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <InlineCell value={Number(w.leaves || 0)} max={7} onSave={v => inlineSave(w, 'leaves', v)} />
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <InlineCell value={Number(w.adv_deducted || 0)} onSave={v => inlineSave(w, 'adv_deducted', v)} color="var(--red)" />
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <InlineCell value={Number(w.shr_deducted || 0)} onSave={v => inlineSave(w, 'shr_deducted', v)} color="var(--red)" />
-                    </td>
+                    <td style={{ textAlign: 'center' }}><InlineCell value={Number(w.days_worked || 0)} max={7} onSave={v => inlineSave(w, 'days_worked', v)} /></td>
+                    <td style={{ textAlign: 'center' }}><InlineCell value={Number(w.leaves || 0)} max={7} onSave={v => inlineSave(w, 'leaves', v)} /></td>
+                    <td style={{ textAlign: 'center' }}><InlineCell value={Number(w.adv_deducted || 0)} onSave={v => inlineSave(w, 'adv_deducted', v)} color="var(--red)" /></td>
+                    <td style={{ textAlign: 'center' }}><InlineCell value={Number(w.shr_deducted || 0)} onSave={v => inlineSave(w, 'shr_deducted', v)} color="var(--red)" /></td>
                     <td className={`amt ${ap > 0 ? 'amt-blue' : 'amt-green'}`}>{fmt(ap)}</td>
                     <td className={`amt ${sp > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(sp)}</td>
                     <td className="amt amt-green"><strong>{fmt(DB.weekSalary(w, emp, wd))}</strong></td>
-                    <td>
-                      <button className="btn btn-danger btn-sm" onClick={() => setConfirm(w.id)}>🗑️</button>
-                    </td>
+                    <td><button className="btn btn-danger btn-sm" onClick={() => setConfirm(w.id)}>🗑️</button></td>
                   </tr>
                 )
               })}
-
-              {/* Pending employees */}
-              {pendingEmps
-                .filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase()))
-                .map(e => (
-                  <tr key={e.id} style={{ background: '#fffbeb' }}>
-                    <td>
-                      <strong style={{ fontSize: 12, color: 'var(--mid)' }}>{e.name}</strong>
-                      <span style={{ fontSize: 10, color: '#d97706', background: '#fef3c7', padding: '1px 6px', borderRadius: 10, marginLeft: 6 }}>Pending</span>
-                    </td>
-                    <td colSpan={7} style={{ color: 'var(--mid)', fontSize: 12, textAlign: 'center' }}>Not entered yet</td>
-                    <td>
-                      <button className="btn btn-success btn-sm" onClick={() => quickAdd(e)}>+ Add</button>
-                    </td>
-                  </tr>
+              {pendingEmps.filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase())).map(e => (
+                <tr key={e.id} style={{ background: '#fffbeb' }}>
+                  <td>
+                    <strong style={{ fontSize: 12, color: 'var(--mid)' }}>{e.name}</strong>
+                    <span style={{ fontSize: 10, color: '#d97706', background: '#fef3c7', padding: '1px 6px', borderRadius: 10, marginLeft: 6 }}>Pending</span>
+                  </td>
+                  <td colSpan={7} style={{ color: 'var(--mid)', fontSize: 12, textAlign: 'center' }}>Not entered yet</td>
+                  <td><button className="btn btn-success btn-sm" onClick={() => quickAdd(e)}>+ Add</button></td>
+                </tr>
               ))}
-
               {!filtered.length && !pendingEmps.length && (
                 <tr><td colSpan={9} style={{ textAlign: 'center', padding: 28, color: 'var(--mid)' }}>No entries for this period</td></tr>
               )}
@@ -481,9 +751,7 @@ export function Weekly() {
               <Field label="Shortage Deducted (₹)"><input type="number" min={0} value={bulkForm.shrDeducted} onChange={e => setBulkForm(f => ({ ...f, shrDeducted: Number(e.target.value) }))} /></Field>
             </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--mid)' }}>
-            Employees: <strong style={{ color: 'var(--navy)' }}>{pendingEmps.map(e => e.name).join(', ')}</strong>
-          </div>
+          <div style={{ fontSize: 12, color: 'var(--mid)' }}>Employees: <strong style={{ color: 'var(--navy)' }}>{pendingEmps.map(e => e.name).join(', ')}</strong></div>
         </Modal>
       )}
 
@@ -504,10 +772,13 @@ export function Weekly() {
                 ⚠️ {pendingEmps.length} employees have no entry and will be excluded.
               </div>
             )}
+            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#166534', marginBottom: 16 }}>
+              📥 Excel auto-downloads · 🖨️ Print sheet & 📱 WhatsApp available after closing
+            </div>
             <p style={{ fontSize: 13, color: '#555', marginBottom: 20 }}>This week will be <strong>archived</strong> and the page resets for next week.</p>
             <div className="flex-gap" style={{ justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost btn-sm" onClick={() => setCloseConfirm(false)}>Cancel</button>
-              <button className="btn btn-sm" style={{ background: '#dc2626', color: '#fff' }} onClick={closePayroll}>🔴 Yes, End Payroll</button>
+              <button className="btn btn-sm" style={{ background: '#dc2626', color: '#fff' }} onClick={closePayroll}>🔴 End Payroll & Download Excel</button>
             </div>
           </div>
         </div>
