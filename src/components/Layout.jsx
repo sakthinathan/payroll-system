@@ -2,7 +2,9 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 
 const NAV = [
-  { section: 'Overview', items: [{ to: '/', icon: '📊', label: 'Dashboard' }] },
+  { section: 'Overview', items: [
+    { to: '/', icon: '📊', label: 'Dashboard' }
+  ]},
   { section: 'Master Data', items: [
     { to: '/employees', icon: '👥', label: 'Employees' },
     { to: '/bank', icon: '🏦', label: 'Bank Master' },
@@ -16,6 +18,9 @@ const NAV = [
   { section: 'Reports', items: [
     { to: '/deductions', icon: '📋', label: 'Deduction Master' },
     { to: '/payslip', icon: '🧾', label: 'Payslip' },
+  ]},
+  { section: 'Downloads', items: [
+    { to: '/downloads', icon: '📥', label: 'Downloads' },
   ]},
   { section: 'Data', items: [
     { to: '/backup', icon: '💾', label: 'Backup & Export' },
@@ -63,7 +68,7 @@ export function Topbar({ title }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 16, paddingLeft: 16, borderLeft: '1px solid #e2e8f0' }}>
           <span style={{ fontSize: 11, background: '#e2efda', color: '#375623', padding: '3px 8px', borderRadius: 20, fontWeight: 600 }}>☁️ Cloud</span>
           <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>👤 {user?.username}</span>
-          <button onClick={() => { navigate('/changepw') }}
+          <button onClick={() => navigate('/changepw')}
             style={{ background: 'var(--grey)', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>
             🔑
           </button>

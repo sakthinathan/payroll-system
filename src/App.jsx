@@ -10,6 +10,7 @@ import Employees    from './pages/Employees'
 import { Advances, Shortages, Deductions, Bank, ChangePassword } from './pages/Other'
 import { Weekly, Periods } from './pages/WeeklyPeriods'
 import { Payslip, Backup } from './pages/PayslipBackup'
+import Downloads    from './pages/Downloads'
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Route path="/deductions" element={<Protected><Deductions /></Protected>} />
       <Route path="/bank" element={<Protected><Bank /></Protected>} />
       <Route path="/payslip" element={<Protected><Payslip /></Protected>} />
+      <Route path="/downloads" element={<Protected><Downloads /></Protected>} />
       <Route path="/backup" element={<Protected><Backup /></Protected>} />
       <Route path="/changepw" element={<Protected><ChangePassword /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
