@@ -44,18 +44,26 @@ export default function Dashboard() {
 
     const top5 = Object.entries(payMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
     const recent = [...weekly].slice(0, 8)
-    
     const advOverview = emps.filter(e => advMap[e.name] || shrMap[e.name] || dedMapW.adv[e.name] || dedMapW.shr[e.name])
+
+    // 3. Analytics: Monthly Trends (O(N))
+    const monthTrend = {}
+    weekly.forEach(w => {
+      const month = w.week_label?.split(' ')[0] || 'Other'
+      monthTrend[month] = (monthTrend[month] || 0) + DB.weekSalary(w, empMap[w.name], wd)
+    })
+    const trendData = Object.entries(monthTrend).slice(-6) // Last 6 months
+    const maxTrend = Math.max(...trendData.map(d => d[1]), 1)
 
     return { 
       totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview, 
-      empMap, advMap, shrMap, dedMapW, wd 
+      empMap, advMap, shrMap, dedMapW, wd, trendData, maxTrend 
     }
   }, [rawData])
 
   if (!stats) return <Layout title="📊 Dashboard"><Spinner /></Layout>
 
-  const { totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview, empMap, advMap, shrMap, dedMapW, wd } = stats
+  const { totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview, empMap, advMap, shrMap, dedMapW, wd, trendData, maxTrend } = stats
   const maxPay = top5[0]?.[1] || 1
 
   return (
@@ -65,6 +73,32 @@ export default function Dashboard() {
         <KpiCard label="Total Net Paid" value={fmt(totalNet)} sub="All weekly entries" icon="✅" color="green" />
         <KpiCard label="Advance Pending" value={fmt(pendAdv)} sub="Still to recover" icon="💸" color="red" />
         <KpiCard label="Shortage Pending" value={fmt(pendShr)} sub="Still to recover" icon="⚠️" color="orange" />
+      </div>
+
+      {/* Analytics Charts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }}>
+        <Panel title="Weekly Salary Expense Trend (Last 6 Months)">
+          <div style={{ display: 'flex', alignItems: 'flex-end', height: 200, gap: 12, padding: '20px 10px' }}>
+            {trendData.length ? trendData.map(([month, amt]) => (
+              <div key={month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: '100%', background: 'linear-gradient(to top, var(--blue), #60a5fa)', height: `${(amt/maxTrend)*150}px`, borderRadius: '6px 6px 0 0', transition: 'height 0.5s ease' }} title={fmt(amt)}></div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase' }}>{month.slice(0,3)}</div>
+              </div>
+            )) : <div className="empty-state"><p>Insufficient data for trend</p></div>}
+          </div>
+        </Panel>
+        <Panel title="Quick Stats">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 10 }}>
+            <div style={{ padding: 14, background: 'var(--grey)', borderRadius: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--mid)', textTransform: 'uppercase' }}>Avg. Weekly Payout</div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{fmt(totalNet / (trendData.length || 1))}</div>
+            </div>
+            <div style={{ padding: 14, background: 'var(--grey)', borderRadius: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--mid)', textTransform: 'uppercase' }}>Recoverable Assets</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--red)' }}>{fmt(pendAdv + pendShr)}</div>
+            </div>
+          </div>
+        </Panel>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>

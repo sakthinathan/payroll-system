@@ -112,57 +112,79 @@ export function Payslip() {
 
         {/* Payslip */}
         {emp ? (
-          <div className="payslip">
-            <div className="payslip-header">
-              <h2>THULIR AGENCY</h2>
-              <p>Perundurai Road, Erode</p>
-              <div className="payslip-badge">SALARY SLIP — {selWeek || 'All Weeks'}</div>
+          <div className="payslip" style={{ border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', background: '#fff', borderRadius: 20 }}>
+            <div className="payslip-header" style={{ borderBottom: '2px solid var(--blue)', padding: '32px', textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)', letterSpacing: -0.5 }}>THULIR AGENCY</div>
+              <p style={{ margin: '4px 0', fontSize: 12, color: 'var(--mid)' }}>Perundurai Road, Erode | TN, India</p>
+              <div style={{ marginTop: 12, display: 'inline-block', padding: '6px 16px', background: 'var(--lblue)', color: 'var(--blue)', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                Salary Statement — {selWeek || 'Consolidated'}
+              </div>
             </div>
-            <div className="payslip-body">
-              <div className="payslip-info">
-                <div className="info-row"><div className="info-label">Employee</div><strong>{emp.name}</strong></div>
-                <div className="info-row"><div className="info-label">Monthly Salary</div><strong>{fmt(emp.salary)}</strong></div>
-                <div className="info-row"><div className="info-label">Per Day Rate</div><strong>{fmt(pd.toFixed(2))}</strong></div>
-                <div className="info-row"><div className="info-label">Days Worked</div><strong>{totalDays} days</strong></div>
-                <div className="info-row"><div className="info-label">Bank · A/C</div><strong>{bank.bank || '—'} · {bank.acc || '—'}</strong></div>
-                <div className="info-row"><div className="info-label">IFSC</div><strong>{bank.ifsc || '—'}</strong></div>
-              </div>
-              <div className="payslip-tables">
-                <div className="payslip-table earn">
-                  <h4>EARNINGS</h4>
-                  <table>
-                    <tbody>
-                      <tr><td>Salary Earned</td><td>{fmt(earned)}</td></tr>
-                      <tr style={{ borderTop: '2px solid #e2e8f0' }}><td><strong>GROSS</strong></td><td><strong>{fmt(earned)}</strong></td></tr>
-                    </tbody>
-                  </table>
+            
+            <div className="payslip-body" style={{ padding: '32px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 32 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: 'var(--mid)', textTransform: 'uppercase', marginBottom: 6 }}>Employee Details</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>{emp.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--mid)', marginTop: 2 }}>{bank.bank || '—'} · {bank.acc || '—'}</div>
                 </div>
-                <div className="payslip-table deduct">
-                  <h4>DEDUCTIONS</h4>
-                  <table>
-                    <tbody>
-                      <tr><td>Advance Deducted</td><td>{fmt(totalAdv)}</td></tr>
-                      <tr><td>Shortage Deducted</td><td>{fmt(totalShr)}</td></tr>
-                      <tr style={{ borderTop: '2px solid #e2e8f0' }}><td><strong>TOTAL</strong></td><td><strong>{fmt(totalAdv + totalShr)}</strong></td></tr>
-                    </tbody>
-                  </table>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, color: 'var(--mid)', textTransform: 'uppercase', marginBottom: 6 }}>Statement Period</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{selWeek || 'All Records'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--mid)', marginTop: 2 }}>Days Worked: <strong>{totalDays}</strong></div>
                 </div>
               </div>
-              <div className="payslip-total">
-                <div><div className="label">NET PAY (Take Home)</div><div style={{ fontSize: 11, opacity: .7 }}>After all deductions</div></div>
-                <div className="amount">{fmt(netPay)}</div>
-              </div>
-              <div style={{ marginTop: 16, textAlign: 'center', fontSize: 11, color: 'var(--mid)' }}>Computer-generated payslip · No signature required</div>
 
-              {/* WhatsApp + Print */}
-              <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={shareWhatsApp}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', boxShadow: '0 4px 12px rgba(37,211,102,.4)' }}>
-                  <svg width={20} height={20} viewBox="0 0 24 24" fill="white">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  Share on WhatsApp
-                </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, padding: '24px 0', borderTop: '1px solid #f1f5f9' }}>
+                <div>
+                  <h4 style={{ fontSize: 12, color: 'var(--green)', marginBottom: 12, borderLeft: '3px solid var(--green)', paddingLeft: 8 }}>EARNINGS</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                    <span>Basic Salary</span>
+                    <span>{fmt(earned)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
+                    <span>Gross Total</span>
+                    <span style={{ color: 'var(--green)' }}>{fmt(earned)}</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, borderLeft: '3px solid var(--red)', paddingLeft: 8 }}>DEDUCTIONS</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                    <span>Advance Recovery</span>
+                    <span>{fmt(totalAdv)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
+                    <span>Shortage Recovery</span>
+                    <span>{fmt(totalShr)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
+                    <span>Total Deductions</span>
+                    <span style={{ color: 'var(--red)' }}>{fmt(totalAdv + totalShr)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 40, padding: '24px', background: 'var(--navy)', borderRadius: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff' }}>
+                <div>
+                  <div style={{ fontSize: 11, opacity: 0.8, textTransform: 'uppercase', letterSpacing: 1 }}>Net Take-Home Pay</div>
+                  <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>Transferred to Bank Account</div>
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800 }}>{fmt(netPay)}</div>
+              </div>
+
+              <div style={{ marginTop: 32, textAlign: 'center' }}>
+                <p style={{ fontSize: 10, color: 'var(--mid)', fontStyle: 'italic' }}>
+                  This is a computer-generated document and does not require a physical signature.
+                </p>
+                
+                <div className="no-print" style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button onClick={shareWhatsApp} className="btn" style={{ background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    📲 WhatsApp
+                  </button>
+                  <button onClick={() => window.print()} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    🖨️ Print / Save PDF
+                  </button>
+                </div>
               </div>
             </div>
           </div>

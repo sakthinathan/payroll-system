@@ -11,6 +11,7 @@ import { Advances, Shortages, Deductions, Bank, ChangePassword } from './pages/O
 import { Weekly, Periods } from './pages/WeeklyPeriods'
 import { Monthly }         from './pages/MonthlyEntry'
 import { MonthlyPeriods }  from './pages/MonthlyPeriods'
+import Ledger from './pages/Ledger'
 import { Payslip, Backup } from './pages/PayslipBackup'
 import Downloads    from './pages/Downloads'
 
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
       <Route path="/periods" element={<Protected><Periods /></Protected>} />
       <Route path="/monthly" element={<Protected><Monthly /></Protected>} />
+      <Route path="/ledger" element={<Protected><Ledger /></Protected>} />
       <Route path="/monthly-periods" element={<Protected><MonthlyPeriods /></Protected>} />
       <Route path="/advances" element={<Protected><Advances /></Protected>} />
       <Route path="/shortages" element={<Protected><Shortages /></Protected>} />
