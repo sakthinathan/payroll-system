@@ -159,35 +159,109 @@ function openPrintWindow(label, entries, emps, bankList, wd) {
   win.document.close()
 }
 
+// ── DETAILED EXCEL GENERATOR ──────────────────────────────────────
+async function generateDetailedExcel(label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd) {
+  const XLSX = await loadSheetJS()
+  const rows = [
+    ['THULIR AGENCY — DETAILED PAYROLL REPORT'],
+    [`Period: ${label} (${type.toUpperCase()})`],
+    [`Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`],
+    [],
+    ['S.No', 'Employee Name', 'Gross Salary', 'Days Worked', 'Leaves', 'Adv Ded', 'Shr Ded', 'Adv Pending', 'Shr Pending', 'Net Salary']
+  ]
+
+  entries.forEach((entry, i) => {
+    const emp = emps.find(e => e.name === entry.name)
+    const ap = type === 'weekly' 
+      ? DB.advPending(entry.name, advances, allWeekly)
+      : DB.advPendingMonthly(entry.name, advances, allMonthly)
+    const sp = type === 'weekly'
+      ? DB.shrPending(entry.name, shortages, allWeekly)
+      : DB.shrPendingMonthly(entry.name, shortages, allMonthly)
+    
+    const salary = Math.round(type === 'weekly' 
+      ? DB.weekSalary(entry, emp, wd)
+      : DB.monthlySalary(entry, emp, wd))
+
+    rows.push([
+      i + 1,
+      entry.name,
+      emp?.salary || 0,
+      entry.days_worked || 0,
+      entry.leaves || 0,
+      entry.adv_deducted || 0,
+      entry.shr_deducted || 0,
+      ap,
+      sp,
+      salary
+    ])
+  })
+
+  const wb = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet(rows)
+  sheet['!cols'] = [
+    { wch: 6 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
+    { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+  ]
+  XLSX.utils.book_append_sheet(wb, sheet, 'Detailed Report')
+  XLSX.writeFile(wb, `${label.replace(/\s+/g, '-')}-Detailed-Report.xlsx`)
+}
+
 // ── DOWNLOADS PAGE ────────────────────────────────────────────────
 export default function Downloads() {
   const [periods, setPeriods]   = useState([])
+  const [mPeriods, setMPeriods] = useState([])
   const [emps, setEmps]         = useState([])
   const [bankList, setBankList] = useState([])
+  const [advances, setAdvances] = useState([])
+  const [shortages, setShortages] = useState([])
   const [wd, setWd]             = useState(26)
   const [loading, setLoading]   = useState(true)
+  const [tab, setTab]           = useState('weekly') // 'weekly' or 'monthly'
+
   const [downloading, setDownloading] = useState(null) // period id being downloaded
   const [printing, setPrinting]       = useState(null) // period id being printed
+  const [detailed, setDetailed]       = useState(null) // period id being detailed-downloaded
+  
   const [weeklyMap, setWeeklyMap]     = useState({})   // periodId → entries[]
+  const [monthlyMap, setMonthlyMap]   = useState({})   // periodId → entries[]
+  const [allWeekly, setAllWeekly]     = useState([])
+  const [allMonthly, setAllMonthly]   = useState([])
 
   const load = useCallback(async () => {
-    const [p, e, b, wdays, allWeekly] = await Promise.all([
-      DB.periods(), DB.employees(), DB.bank(), DB.getWorkingDays(), DB.weekly()
+    const [p, mp, e, b, wdays, wkly, mnthly, adv, shr] = await Promise.all([
+      DB.periods(), DB.monthlyPeriods(), DB.employees(), DB.bank(), DB.getWorkingDays(), 
+      DB.weekly(), DB.monthlyAll(), DB.advances(), DB.shortages()
     ])
+    
     // Group weekly entries by period_id
-    const map = {}
-    allWeekly.forEach(w => {
-      if (!map[w.period_id]) map[w.period_id] = []
-      map[w.period_id].push(w)
+    const wMap = {}
+    wkly.forEach(w => {
+      if (!wMap[w.period_id]) wMap[w.period_id] = []
+      wMap[w.period_id].push(w)
     })
-    const closed = p.filter(x => x.status === 'closed').sort((a, b) => new Date(b.date_from) - new Date(a.date_from))
-    setPeriods(closed); setEmps(e); setBankList(b); setWd(wdays); setWeeklyMap(map); setLoading(false)
+    
+    // Group monthly entries by period_id
+    const mMap = {}
+    mnthly.forEach(m => {
+      if (!mMap[m.period_id]) mMap[m.period_id] = []
+      mMap[m.period_id].push(m)
+    })
+
+    const closedW = p.filter(x => x.status === 'closed').sort((a, b) => new Date(b.date_from) - new Date(a.date_from))
+    const closedM = mp.filter(x => x.status === 'closed').sort((a, b) => new Date(b.date_from) - new Date(a.date_from))
+    
+    setPeriods(closedW); setMPeriods(closedM); setEmps(e); setBankList(b); setWd(wdays); 
+    setWeeklyMap(wMap); setMonthlyMap(mMap); setAllWeekly(wkly); setAllMonthly(mnthly);
+    setAdvances(adv); setShortages(shr);
+    setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const handleBankDownload = async (period) => {
-    const entries = weeklyMap[period.id] || []
+  const handleBankDownload = async (period, type) => {
+    const map = type === 'weekly' ? weeklyMap : monthlyMap
+    const entries = map[period.id] || []
     if (!entries.length) { toast.error('No entries found for this period'); return }
     setDownloading(period.id)
     try {
@@ -199,43 +273,68 @@ export default function Downloads() {
     setDownloading(null)
   }
 
-  const handlePrint = async (period) => {
-    const entries = weeklyMap[period.id] || []
+  const handlePrint = async (period, type) => {
+    const map = type === 'weekly' ? weeklyMap : monthlyMap
+    const entries = map[period.id] || []
     if (!entries.length) { toast.error('No entries found for this period'); return }
     setPrinting(period.id)
     openPrintWindow(period.label, entries, emps, bankList, wd)
     setTimeout(() => setPrinting(null), 1000)
   }
 
+  const handleDetailedDownload = async (period, type) => {
+    const map = type === 'weekly' ? weeklyMap : monthlyMap
+    const entries = map[period.id] || []
+    if (!entries.length) { toast.error('No entries found for this period'); return }
+    setDetailed(period.id)
+    try {
+      await generateDetailedExcel(period.label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd)
+      toast.success('Detailed Report Downloaded!')
+    } catch (e) {
+      toast.error('Failed: ' + e.message)
+    }
+    setDetailed(null)
+  }
+
   if (loading) return <Layout title="📥 Downloads"><Spinner /></Layout>
+
+  const currentPeriods = tab === 'weekly' ? periods : mPeriods
+  const currentMap     = tab === 'weekly' ? weeklyMap : monthlyMap
 
   return (
     <Layout title="📥 Downloads">
       {/* Header info */}
       <div style={{ background: 'linear-gradient(135deg,#1F3864,#2E75B6)', borderRadius: 12, padding: '20px 24px', marginBottom: 24, color: '#fff' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>📥 Payroll Downloads</div>
-        <div style={{ fontSize: 13, opacity: .75 }}>
-          Download bank transfer files and print sheets for any past payroll week.
-          Files are generated fresh from live data each time.
-        </div>
-        <div style={{ display: 'flex', gap: 20, marginTop: 14, flexWrap: 'wrap' }}>
-          <div style={{ background: 'rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 16px', fontSize: 12 }}>
-            🏦 <strong>Bank Transfer Excel</strong> — SBI + Other Bank sheets
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>📥 Payroll Downloads</div>
+            <div style={{ fontSize: 13, opacity: .75 }}>
+              Download bank files, print sheets, and detailed reports for past payrolls.
+            </div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,.15)', borderRadius: 8, padding: '8px 16px', fontSize: 12 }}>
-            🖨️ <strong>Print Sheet</strong> — with signatures
+          <div className="flex-gap" style={{ background: 'rgba(0,0,0,.2)', padding: 4, borderRadius: 10 }}>
+            <button 
+              className={`btn btn-sm ${tab === 'weekly' ? '' : 'btn-ghost'}`} 
+              style={{ background: tab === 'weekly' ? '#fff' : 'transparent', color: tab === 'weekly' ? '#1F3864' : '#fff' }}
+              onClick={() => setTab('weekly')}
+            >📅 Weekly</button>
+            <button 
+              className={`btn btn-sm ${tab === 'monthly' ? '' : 'btn-ghost'}`} 
+              style={{ background: tab === 'monthly' ? '#fff' : 'transparent', color: tab === 'monthly' ? '#1F3864' : '#fff' }}
+              onClick={() => setTab('monthly')}
+            >🟣 Monthly</button>
           </div>
         </div>
       </div>
 
-      {periods.length === 0 ? (
+      {currentPeriods.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 64, color: 'var(--mid)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>No closed payrolls yet</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Close a payroll period to see downloads here</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>No closed {tab} payrolls yet</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Close a {tab} payroll period to see downloads here</div>
         </div>
       ) : (
-        <Panel noPad title={`All Payroll Periods — ${periods.length} weeks`}>
+        <Panel noPad title={`${tab === 'weekly' ? '📅' : '🟣'} ${tab.charAt(0).toUpperCase() + tab.slice(1)} Payroll Periods — ${currentPeriods.length} closed`}>
           <div className="tbl-wrap">
             <table>
               <thead>
@@ -243,35 +342,21 @@ export default function Downloads() {
                   <th>Period</th>
                   <th>Month</th>
                   <th>Date Range</th>
-                  <th>Closed On</th>
-                  <th style={{ textAlign: 'center' }}>Employees</th>
-                  <th style={{ textAlign: 'right' }}>Total Payroll</th>
-                  <th style={{ textAlign: 'center' }}>SBI</th>
-                  <th style={{ textAlign: 'center' }}>Other Bank</th>
-                  <th style={{ textAlign: 'center' }}>Downloads</th>
+                  <th style={{ textAlign: 'center' }}>Emps</th>
+                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th style={{ textAlign: 'center' }}>Detailed Report</th>
+                  <th style={{ textAlign: 'center' }}>Other Downloads</th>
                 </tr>
               </thead>
               <tbody>
-                {periods.map(p => {
-                  const entries   = weeklyMap[p.id] || []
-                  const sbiCount  = entries.filter(w => {
-                    const bank = bankList.find(b => b.name === w.name)
-                    return bank && (bank.ifsc || '').toUpperCase().startsWith(SBI_IFSC_PREFIX)
-                  }).length
-                  const otherCount = entries.filter(w => {
-                    const bank = bankList.find(b => b.name === w.name)
-                    return bank && !(bank.ifsc || '').toUpperCase().startsWith(SBI_IFSC_PREFIX)
-                  }).length
-
+                {currentPeriods.map(p => {
+                  const entries = currentMap[p.id] || []
                   return (
                     <tr key={p.id}>
                       <td><strong>{p.label}</strong></td>
-                      <td><span className="badge badge-blue">{p.month_name}</span></td>
-                      <td style={{ fontSize: 12, color: 'var(--mid)' }}>
+                      <td><span className={`badge ${tab === 'weekly' ? 'badge-blue' : 'badge-purple'}`} style={tab === 'monthly' ? {background:'#f3e8ff', color:'#7c3aed'} : {}}>{p.month_name}</span></td>
+                      <td style={{ fontSize: 11, color: 'var(--mid)' }}>
                         {new Date(p.date_from).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} — {new Date(p.date_to).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
-                      </td>
-                      <td style={{ fontSize: 12, color: 'var(--mid)' }}>
-                        {p.closed_at ? new Date(p.closed_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}
                       </td>
                       <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontWeight: 700 }}>
                         {entries.length}
@@ -280,32 +365,33 @@ export default function Downloads() {
                         <strong>{fmt(p.total_payroll || 0)}</strong>
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <span className="badge badge-blue">{sbiCount}</span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className="badge badge-orange">{otherCount}</span>
+                        <button
+                          className="btn btn-sm"
+                          style={{ background: '#059669', color: '#fff', gap: 6 }}
+                          onClick={() => handleDetailedDownload(p, tab)}
+                          disabled={detailed === p.id}
+                        >
+                          {detailed === p.id ? '⏳' : '📊'} {detailed === p.id ? '...' : 'Detailed Excel'}
+                        </button>
                       </td>
                       <td>
                         <div className="flex-gap" style={{ justifyContent: 'center' }}>
-                          {/* Bank Transfer Excel */}
                           <button
                             className="btn btn-sm"
-                            style={{ background: '#1F3864', color: '#fff', gap: 6 }}
-                            onClick={() => handleBankDownload(p)}
+                            style={{ background: '#1F3864', color: '#fff', padding: '6px 10px' }}
+                            onClick={() => handleBankDownload(p, tab)}
                             disabled={downloading === p.id}
-                            title="Download Bank Transfer Excel (SBI + Other Bank)"
+                            title="Download Bank Transfer Excel"
                           >
-                            {downloading === p.id ? '⏳' : '🏦'} {downloading === p.id ? 'Generating...' : 'Bank Excel'}
+                            {downloading === p.id ? '⏳' : '🏦 Bank'}
                           </button>
-
-                          {/* Print Sheet */}
                           <button
                             className="btn btn-ghost btn-sm"
-                            onClick={() => handlePrint(p)}
+                            onClick={() => handlePrint(p, tab)}
                             disabled={printing === p.id}
-                            title="Open Print Sheet"
+                            style={{ padding: '6px 10px' }}
                           >
-                            {printing === p.id ? '⏳' : '🖨️'} Print
+                            {printing === p.id ? '⏳' : '🖨️ Print'}
                           </button>
                         </div>
                       </td>
@@ -318,11 +404,11 @@ export default function Downloads() {
         </Panel>
       )}
 
-      {/* Legend */}
       <div style={{ background: 'var(--grey)', borderRadius: 10, padding: '14px 18px', fontSize: 12, color: 'var(--mid)', marginTop: 8 }}>
-        <strong style={{ color: 'var(--navy)' }}>📌 Note:</strong> Files are generated fresh from current database data.
-        Bank Excel has 2 sheets — <strong>SBI</strong> (IFSC starts with SBIN) and <strong>OTHER BANK</strong> (all other banks) in the exact format required for SBI bulk upload.
+        <strong style={{ color: 'var(--navy)' }}>📌 Note:</strong> <strong>Detailed Excel</strong> contains all columns including Days, Leaves, Deductions, and Pending balances. 
+        <strong>Bank Excel</strong> is for SBI bulk upload.
       </div>
     </Layout>
   )
 }
+
