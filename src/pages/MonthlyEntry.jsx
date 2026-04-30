@@ -113,9 +113,24 @@ export function Monthly() {
   const filtered     = allMonthly.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
 
   const inlineSave = async (entry, field, newVal) => {
+    // Optimistic update — immediately reflect change in UI so salary recalculates instantly
+    setAllMonthly(prev => prev.map(m => m.id === entry.id ? { ...m, [field]: newVal } : m))
     setSaving(entry.id)
-    await DB.updateMonthly({ id:entry.id, name:entry.name, monthLabel:entry.month_label, date:entry.date, periodId:entry.period_id, daysWorked:field==='days_worked'?newVal:entry.days_worked, leaves:field==='leaves'?newVal:entry.leaves, advDeducted:field==='adv_deducted'?newVal:entry.adv_deducted, shrDeducted:field==='shr_deducted'?newVal:entry.shr_deducted })
-    toast.success('Saved ✅', { duration:1000 }); setSaving(null); load()
+    try {
+      await DB.updateMonthly({
+        id: entry.id, name: entry.name, monthLabel: entry.month_label, date: entry.date, periodId: entry.period_id,
+        daysWorked:   field === 'days_worked'   ? newVal : (entry.days_worked   || 0),
+        leaves:       field === 'leaves'        ? newVal : (entry.leaves        || 0),
+        advDeducted:  field === 'adv_deducted'  ? newVal : (entry.adv_deducted  || 0),
+        shrDeducted:  field === 'shr_deducted'  ? newVal : (entry.shr_deducted  || 0),
+      })
+      toast.success('Saved ✅', { duration:800 })
+    } catch (err) {
+      toast.error('Save failed: ' + err.message)
+      load() // rollback on error
+    } finally {
+      setSaving(null)
+    }
   }
 
   const quickAdd = async emp => {
