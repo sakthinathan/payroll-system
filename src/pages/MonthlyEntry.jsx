@@ -67,6 +67,7 @@ export function Monthly() {
   const [bankList, setBankList]         = useState([])
   const [activePeriod, setActivePeriod] = useState(null)
   const [loading, setLoading]           = useState(true)
+  const [tableError, setTableError]     = useState(false)
   const [confirm, setConfirm]           = useState(null)
   const [search, setSearch]             = useState('')
   const [bulkModal, setBulkModal]       = useState(false)
@@ -86,10 +87,22 @@ export function Monthly() {
   }, [newPeriod.month, newPeriod.year])
 
   const load = useCallback(async () => {
-    const [w, e, a, s, ap, b] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank()])
-    const monthlyEmps = e.filter(emp => isMonthlyEmp(emp.name))
-    const periodEntries = ap ? w.filter(x => x.period_id === ap.id) : []
-    setAllMonthly(periodEntries); setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b); setLoading(false)
+    try {
+      const [w, e, a, s, ap, b] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank()])
+      const monthlyEmps = e.filter(emp => isMonthlyEmp(emp.name))
+      const periodEntries = ap ? w.filter(x => x.period_id === ap.id) : []
+      setAllMonthly(periodEntries); setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b)
+      setTableError(false)
+    } catch (err) {
+      console.error('Monthly load error:', err)
+      if (err.message && (err.message.includes('does not exist') || err.message.includes('relation') || err.message.includes('42P01'))) {
+        setTableError(true)
+      } else {
+        toast.error('Load failed: ' + err.message)
+      }
+    } finally {
+      setLoading(false)
+    }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -105,35 +118,86 @@ export function Monthly() {
   }
 
   const quickAdd = async emp => {
-    await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
-    toast.success(`${emp.name} added ✅`, { duration:1000 }); load()
+    try {
+      await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
+      toast.success(`${emp.name} added ✅`, { duration:1000 }); load()
+    } catch (err) { toast.error('Failed: ' + err.message) }
   }
 
   const bulkAdd = async () => {
-    for (const emp of pendingEmps) await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, periodId:activePeriod.id })
-    toast.success(`${pendingEmps.length} entries added ✅`); setBulkModal(false); load()
+    try {
+      for (const emp of pendingEmps) await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, periodId:activePeriod.id })
+      toast.success(`${pendingEmps.length} entries added ✅`); setBulkModal(false); load()
+    } catch (err) { toast.error('Failed: ' + err.message) }
   }
 
   const startPeriod = async () => {
     if (!newPeriod.dateFrom || !newPeriod.dateTo) { toast.error('Select dates'); return }
-    const existing = await DB.openMonthlyPeriod()
-    if (existing) { toast.error(`"${existing.label}" is already open. Close it first.`); return }
-    await DB.saveMonthlyPeriod({ id:uid(), label:newPeriod.label, month_name:newPeriod.label, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' })
-    toast.success(`✅ "${newPeriod.label}" started!`); load()
+    try {
+      const existing = await DB.openMonthlyPeriod()
+      if (existing) { toast.error(`"${existing.label}" is already open. Close it first.`); return }
+      await DB.saveMonthlyPeriod({ id:uid(), label:newPeriod.label, month_name:newPeriod.label, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' })
+      toast.success(`✅ "${newPeriod.label}" started!`); load()
+    } catch (err) {
+      console.error('startPeriod error:', err)
+      toast.error('Failed to start period. Check if Supabase tables are created. Error: ' + err.message)
+    }
   }
 
   const closePayroll = async () => {
-    await DB.closeMonthlyPeriod(activePeriod.id, totalPay)
-    const label = activePeriod.label, entries = [...allMonthly], allEmps = [...emps]
-    downloadMonthlyExcel(label, entries, allEmps)
-    setTimeout(() => { const r = downloadMonthlyBankFile(label, entries, allEmps, bankList); toast.success(`🏦 Bank files downloaded — SBI: ${r.sbiCount} | Other: ${r.otherCount}`, { duration:4000 }) }, 600)
-    toast.success(`✅ "${label}" closed! Files downloading... 📥`)
-    setClosedData({ label, entries, allEmps }); setCloseConfirm(false); setActivePeriod(null); setAllMonthly([]); load()
+    try {
+      await DB.closeMonthlyPeriod(activePeriod.id, totalPay)
+      const label = activePeriod.label, entries = [...allMonthly], allEmps = [...emps]
+      downloadMonthlyExcel(label, entries, allEmps)
+      setTimeout(() => { const r = downloadMonthlyBankFile(label, entries, allEmps, bankList); toast.success(`🏦 Bank files downloaded — SBI: ${r.sbiCount} | Other: ${r.otherCount}`, { duration:4000 }) }, 600)
+      toast.success(`✅ "${label}" closed! Files downloading... 📥`)
+      setClosedData({ label, entries, allEmps }); setCloseConfirm(false); setActivePeriod(null); setAllMonthly([]); load()
+    } catch (err) { toast.error('Failed to close: ' + err.message) }
   }
 
-  const del = async id => { await DB.deleteMonthly(id); toast.error('Deleted'); setConfirm(null); load() }
+  const del = async id => {
+    try { await DB.deleteMonthly(id); toast.error('Deleted'); setConfirm(null); load() }
+    catch (err) { toast.error('Delete failed: ' + err.message) }
+  }
 
   if (loading) return <Layout title="🗓️ Monthly Entry"><Spinner /></Layout>
+
+  if (tableError) {
+    return (
+      <Layout title="🗓️ Monthly Entry">
+        <div style={{ maxWidth:580, margin:'40px auto', textAlign:'center' }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>⚠️</div>
+          <div style={{ fontSize:20, fontWeight:800, color:'var(--navy)', marginBottom:8 }}>Supabase Tables Not Found</div>
+          <div style={{ fontSize:14, color:'var(--mid)', marginBottom:24 }}>The <code>monthly_periods</code> and <code>monthly_entries</code> tables are missing.</div>
+          <div style={{ background:'#1e1e2e', borderRadius:12, padding:'16px 20px', textAlign:'left', marginBottom:20 }}>
+            <div style={{ color:'#86efac', fontSize:12, fontFamily:'monospace', lineHeight:1.8 }}>
+              <div style={{ color:'#94a3b8', marginBottom:8 }}>-- Run this SQL in Supabase → SQL Editor:</div>
+              <div>CREATE TABLE IF NOT EXISTS monthly_periods (</div>
+              <div>&nbsp;&nbsp;id TEXT PRIMARY KEY,</div>
+              <div>&nbsp;&nbsp;label TEXT, month_name TEXT,</div>
+              <div>&nbsp;&nbsp;date_from DATE, date_to DATE,</div>
+              <div>&nbsp;&nbsp;status TEXT DEFAULT 'open',</div>
+              <div>&nbsp;&nbsp;total_payroll NUMERIC DEFAULT 0,</div>
+              <div>&nbsp;&nbsp;closed_at TIMESTAMPTZ,</div>
+              <div>&nbsp;&nbsp;created_at TIMESTAMPTZ DEFAULT now()</div>
+              <div>);</div>
+              <br />
+              <div>CREATE TABLE IF NOT EXISTS monthly_entries (</div>
+              <div>&nbsp;&nbsp;id TEXT PRIMARY KEY,</div>
+              <div>&nbsp;&nbsp;name TEXT NOT NULL,</div>
+              <div>&nbsp;&nbsp;month_label TEXT, date DATE,</div>
+              <div>&nbsp;&nbsp;adv_deducted NUMERIC DEFAULT 0,</div>
+              <div>&nbsp;&nbsp;shr_deducted NUMERIC DEFAULT 0,</div>
+              <div>&nbsp;&nbsp;period_id TEXT,</div>
+              <div>&nbsp;&nbsp;created_at TIMESTAMPTZ DEFAULT now()</div>
+              <div>);</div>
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={() => { setLoading(true); setTableError(false); load() }}>🔄 Retry After Creating Tables</button>
+        </div>
+      </Layout>
+    )
+  }
 
   if (!activePeriod) {
     return (
