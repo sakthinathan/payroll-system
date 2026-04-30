@@ -12,6 +12,8 @@ const NAV = [
   { section: 'Transactions', items: [
     { to: '/periods', icon: '📆', label: 'Payroll Periods' },
     { to: '/weekly', icon: '📅', label: 'Weekly Entry' },
+    { to: '/monthly-periods', icon: '🗓️', label: 'Monthly Periods' },
+    { to: '/monthly', icon: '🟣', label: 'Monthly Entry' },
     { to: '/advances', icon: '💰', label: 'Advance Log' },
     { to: '/shortages', icon: '⚠️', label: 'Shortage Log' },
   ]},

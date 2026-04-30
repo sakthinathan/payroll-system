@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { DB, fmt, uid } from '../lib/db'
+import { DB, fmt, uid, isMonthlyEmp } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 
@@ -12,7 +12,8 @@ export default function Employees() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // {type:'add'|'edit', emp?}
   const [confirm, setConfirm] = useState(null)
-  const [form, setForm] = useState({ name: '', salary: '' })
+  const [form, setForm] = useState({ name: '', salary: '', salaryType: 'weekly' })
+  const [activeTab, setActiveTab] = useState('weekly') // 'weekly' | 'monthly'
 
   const load = useCallback(async () => {
     const [e, w] = await Promise.all([DB.employees(), DB.getWorkingDays()])
@@ -21,8 +22,13 @@ export default function Employees() {
 
   useEffect(() => { load() }, [load])
 
-  const filtered = emps.filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
-  const total = emps.reduce((s, e) => s + Number(e.salary), 0)
+  const weeklyList  = emps.filter(e => !isMonthlyEmp(e.name))
+  const monthlyList = emps.filter(e => isMonthlyEmp(e.name))
+  const displayList = (activeTab === 'weekly' ? weeklyList : monthlyList)
+    .filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
+
+  const weeklyTotal  = weeklyList.reduce((s, e) => s + Number(e.salary), 0)
+  const monthlyTotal = monthlyList.reduce((s, e) => s + Number(e.salary), 0)
 
   const saveWD = async () => {
     if (!wdInput || wdInput < 1 || wdInput > 31) { toast.error('Enter 1–31'); return }
@@ -31,18 +37,24 @@ export default function Employees() {
     toast.success(`Working days updated to ${wdInput}`)
   }
 
-  const openAdd = () => { setForm({ name: '', salary: '' }); setModal({ type: 'add' }) }
-  const openEdit = emp => { setForm({ name: emp.name, salary: emp.salary }); setModal({ type: 'edit', emp }) }
+  const openAdd = () => {
+    setForm({ name: '', salary: '', salaryType: activeTab })
+    setModal({ type: 'add' })
+  }
+  const openEdit = emp => {
+    setForm({ name: emp.name, salary: emp.salary, salaryType: isMonthlyEmp(emp.name) ? 'monthly' : 'weekly' })
+    setModal({ type: 'edit', emp })
+  }
 
   const save = async () => {
     const name = form.name.trim().toUpperCase()
     const salary = Number(form.salary)
     if (!name || !salary) { toast.error('Name and salary required'); return }
     if (modal.type === 'add') {
-      await DB.saveEmployee({ id: uid(), name, salary })
+      await DB.saveEmployee({ id: uid(), name, salary, salaryType: form.salaryType })
       toast.success('Employee added ✅')
     } else {
-      await DB.updateEmployee({ id: modal.emp.id, name, salary })
+      await DB.updateEmployee({ id: modal.emp.id, name, salary, salaryType: form.salaryType })
       toast.success('Saved ✅')
     }
     setModal(null)
@@ -77,24 +89,54 @@ export default function Employees() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+        <div style={{ background: '#eff6ff', border: '2px solid #bfdbfe', borderRadius: 12, padding: '14px 18px', cursor: 'pointer', transition: 'all .2s', ...(activeTab === 'weekly' ? { background: 'var(--navy)', border: '2px solid var(--navy)' } : {}) }} onClick={() => setActiveTab('weekly')}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: activeTab === 'weekly' ? 'rgba(255,255,255,.7)' : 'var(--blue)', marginBottom: 4 }}>📅 Weekly Salary Employees</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: activeTab === 'weekly' ? '#fff' : 'var(--navy)', fontFamily: 'var(--mono)' }}>{weeklyList.length}</div>
+          <div style={{ fontSize: 12, color: activeTab === 'weekly' ? 'rgba(255,255,255,.6)' : 'var(--mid)', marginTop: 2 }}>Total: {fmt(weeklyTotal)}</div>
+        </div>
+        <div style={{ background: '#fdf4ff', border: '2px solid #e9d5ff', borderRadius: 12, padding: '14px 18px', cursor: 'pointer', transition: 'all .2s', ...(activeTab === 'monthly' ? { background: '#7c3aed', border: '2px solid #7c3aed' } : {}) }} onClick={() => setActiveTab('monthly')}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: activeTab === 'monthly' ? 'rgba(255,255,255,.7)' : '#7c3aed', marginBottom: 4 }}>🗓️ Monthly Salary Employees</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: activeTab === 'monthly' ? '#fff' : '#7c3aed', fontFamily: 'var(--mono)' }}>{monthlyList.length}</div>
+          <div style={{ fontSize: 12, color: activeTab === 'monthly' ? 'rgba(255,255,255,.6)' : 'var(--mid)', marginTop: 2 }}>Total: {fmt(monthlyTotal)}</div>
+        </div>
+      </div>
+
       <div className="toolbar">
         <div className="search-box">
-          <input placeholder="Search employees..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder={`Search ${activeTab} employees...`} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex-gap">
-          <span style={{ fontSize: 12, color: 'var(--mid)' }}>Total: </span>
-          <span style={{ fontWeight: 700, color: 'var(--navy)', fontFamily: 'var(--mono)' }}>{fmt(total)}</span>
+          <span style={{ fontSize: 12, color: 'var(--mid)' }}>Showing: </span>
+          <span style={{ fontWeight: 700, color: 'var(--navy)', fontFamily: 'var(--mono)' }}>{fmt(activeTab === 'weekly' ? weeklyTotal : monthlyTotal)}</span>
           <button className="btn btn-primary" onClick={openAdd}>+ Add Employee</button>
         </div>
       </div>
 
-      <Panel title="All Employees" noPad subtitle={`${emps.length} employees · ${wd} working days this month`}>
-        <div className="tbl-wrap">          <table>
-            <thead><tr><th>Name</th><th>Monthly Salary</th><th>Per Day (this month)</th><th>Actions</th></tr></thead>
+      <Panel title={activeTab === 'weekly' ? '📅 Weekly Salary Employees' : '🗓️ Monthly Salary Employees'} noPad
+        subtitle={`${displayList.length} employees · ${wd} working days this month`}>
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Monthly Salary</th>
+                <th>Per Day (this month)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {filtered.map(e => (
+              {displayList.map(e => (
                 <tr key={e.id}>
                   <td><strong style={{ fontSize: 12, color: 'var(--navy)' }}>{e.name}</strong></td>
+                  <td>
+                    {isMonthlyEmp(e.name)
+                      ? <span style={{ background: '#f3e8ff', color: '#7c3aed', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>🗓️ Monthly</span>
+                      : <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>📅 Weekly</span>
+                    }
+                  </td>
                   <td className="amt amt-blue">{fmt(e.salary)}</td>
                   <td className="amt">{fmt((e.salary / wd).toFixed(2))}</td>
                   <td>
@@ -105,7 +147,7 @@ export default function Employees() {
                   </td>
                 </tr>
               ))}
-              {!filtered.length && <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--mid)' }}>No employees found</td></tr>}
+              {!displayList.length && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--mid)' }}>No employees found</td></tr>}
             </tbody>
           </table>
         </div>
@@ -119,6 +161,12 @@ export default function Employees() {
             </Field>
             <Field label="Monthly Salary (₹)">
               <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="e.g. 18000" />
+            </Field>
+            <Field label="Salary Type">
+              <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))}>
+                <option value="weekly">📅 Weekly (weekly entry)</option>
+                <option value="monthly">🗓️ Monthly (monthly entry)</option>
+              </select>
             </Field>
           </div>
         </Modal>

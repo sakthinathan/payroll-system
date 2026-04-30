@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { DB, fmt, uid } from '../lib/db'
+import { DB, fmt, uid, isMonthlyEmp } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 
@@ -262,7 +262,8 @@ export function Weekly() {
   useEffect(() => { load() }, [load])
 
   const enteredNames = new Set(allWeekly.map(w => w.name))
-  const pendingEmps  = emps.filter(e => !enteredNames.has(e.name))
+  const weeklyOnlyEmps = emps.filter(e => !isMonthlyEmp(e.name))
+  const pendingEmps  = weeklyOnlyEmps.filter(e => !enteredNames.has(e.name))
   const totalPay     = allWeekly.reduce((s,w) => s + DB.weekSalary(w, emps.find(e => e.name===w.name), wd), 0)
   const filtered     = allWeekly.filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -349,7 +350,7 @@ export function Weekly() {
           <div>
             <div style={{ color:'rgba(255,255,255,.6)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:1 }}>🟢 Active Period</div>
             <div style={{ color:'#fff', fontSize:20, fontWeight:800, marginTop:2 }}>{activePeriod.label}</div>
-            <div style={{ color:'rgba(255,255,255,.65)', fontSize:12, marginTop:3 }}>📅 {new Date(activePeriod.date_from).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → {new Date(activePeriod.date_to).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} &nbsp;·&nbsp; {allWeekly.length}/{emps.length} employees &nbsp;·&nbsp; Total: {fmt(totalPay)}</div>
+            <div style={{ color:'rgba(255,255,255,.65)', fontSize:12, marginTop:3 }}>📅 {new Date(activePeriod.date_from).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → {new Date(activePeriod.date_to).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} &nbsp;·&nbsp; {allWeekly.length}/{weeklyOnlyEmps.length} employees &nbsp;·&nbsp; Total: {fmt(totalPay)}</div>
           </div>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             {pendingEmps.length > 0 && <button className="btn" style={{ background:'rgba(255,255,255,.15)', color:'#fff', border:'1px solid rgba(255,255,255,.3)' }} onClick={() => setBulkModal(true)}>⚡ Bulk Add ({pendingEmps.length} pending)</button>}
@@ -357,8 +358,8 @@ export function Weekly() {
           </div>
         </div>
         <div style={{ marginTop:14 }}>
-          <div style={{ height:6, background:'rgba(255,255,255,.2)', borderRadius:3, overflow:'hidden' }}><div style={{ height:'100%', borderRadius:3, background:pendingEmps.length===0?'#22c55e':'#f59e0b', width:`${(allWeekly.length/(emps.length||1))*100}%`, transition:'width .4s' }} /></div>
-          <div style={{ marginTop:6, fontSize:11 }}>{pendingEmps.length===0 ? <span style={{ color:'#86efac' }}>✅ All {emps.length} employees entered — ready to close!</span> : <span style={{ color:'#fde68a' }}>⚠️ {pendingEmps.length} employees still pending</span>}</div>
+          <div style={{ height:6, background:'rgba(255,255,255,.2)', borderRadius:3, overflow:'hidden' }}><div style={{ height:'100%', borderRadius:3, background:pendingEmps.length===0?'#22c55e':'#f59e0b', width:`${(allWeekly.length/(weeklyOnlyEmps.length||1))*100}%`, transition:'width .4s' }} /></div>
+          <div style={{ marginTop:6, fontSize:11 }}>{pendingEmps.length===0 ? <span style={{ color:'#86efac' }}>✅ All {weeklyOnlyEmps.length} employees entered — ready to close!</span> : <span style={{ color:'#fde68a' }}>⚠️ {pendingEmps.length} employees still pending</span>}</div>
         </div>
       </div>
 
@@ -425,7 +426,7 @@ export function Weekly() {
             <div className="modal-header"><h3>🔴 End Payroll — {activePeriod?.label}</h3></div>
             <div style={{ background:'var(--grey)', borderRadius:10, padding:16, marginBottom:16 }}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <div style={{ fontSize:13 }}><span style={{ color:'var(--mid)', display:'block', fontSize:11 }}>Entries</span><strong>{allWeekly.length} / {emps.length}</strong></div>
+                <div style={{ fontSize:13 }}><span style={{ color:'var(--mid)', display:'block', fontSize:11 }}>Entries</span><strong>{allWeekly.length} / {weeklyOnlyEmps.length}</strong></div>
                 <div style={{ fontSize:13 }}><span style={{ color:'var(--mid)', display:'block', fontSize:11 }}>Total Payroll</span><strong className="amt-green">{fmt(totalPay)}</strong></div>
                 <div style={{ fontSize:13 }}><span style={{ color:'var(--mid)', display:'block', fontSize:11 }}>Missing</span><strong style={{ color:pendingEmps.length>0?'var(--red)':'#16a34a' }}>{pendingEmps.length===0?'✅ None':`${pendingEmps.length} employees`}</strong></div>
               </div>

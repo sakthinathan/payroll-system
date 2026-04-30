@@ -85,13 +85,7 @@ export default function Login() {
             <div className="lspin" />
           </button>
 
-          <div className="hint-box">
-            <p>🔑 Default credentials</p>
-            <div className="hint-creds">
-              <span>Username: admin</span>
-              <span>Password: thulir123</span>
-            </div>
-          </div>
+          
         </div>
 
         <div className="login-footer">Thulir Agency Payroll v2.0 React · Cloud (Supabase)</div>
