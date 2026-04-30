@@ -1,6 +1,6 @@
 // ── Supabase config ──────────────────────────────────────────────
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || 'https://xzoawoypsldhoucmcuqk.supabase.co'
+const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6b2F3b3lwc2xkaG91Y21jdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDI0ODEsImV4cCI6MjA4OTA3ODQ4MX0._Z8ZF8aHLr4HwQzVToe3w_sSDht4oTOHlOK86Oarhok'
 
 const H = {
   'apikey': SUPA_KEY,
