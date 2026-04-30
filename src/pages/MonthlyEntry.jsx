@@ -75,6 +75,7 @@ export function Monthly() {
   const [bulkForm, setBulkForm]         = useState({ daysWorked:26, leaves:0, advDeducted:0, shrDeducted:0 })
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saving, setSaving]             = useState(null)
+  const [adding, setAdding]             = useState(new Set())
   const [closedData, setClosedData]     = useState(null)
 
   const now = new Date()
@@ -134,10 +135,21 @@ export function Monthly() {
   }
 
   const quickAdd = async emp => {
+    if (adding.has(emp.name)) return // prevent duplicate
+    setAdding(prev => new Set([...prev, emp.name]))
+    // Optimistic: immediately move from pending to entered
+    const tempEntry = { id:'temp_'+emp.name, name:emp.name, month_label:activePeriod.label, date:activePeriod.date_from, days_worked:wd, leaves:0, adv_deducted:0, shr_deducted:0, period_id:activePeriod.id }
+    setAllMonthly(prev => [...prev, tempEntry])
     try {
       await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:wd, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
-      toast.success(`${emp.name} added ✅`, { duration:1000 }); load()
-    } catch (err) { toast.error('Failed: ' + err.message) }
+      toast.success(`${emp.name} added ✅`, { duration:1000 })
+      load()
+    } catch (err) {
+      setAllMonthly(prev => prev.filter(m => m.id !== 'temp_'+emp.name)) // rollback
+      toast.error('Failed: ' + err.message)
+    } finally {
+      setAdding(prev => { const n = new Set(prev); n.delete(emp.name); return n })
+    }
   }
 
   const bulkAdd = async () => {
@@ -310,7 +322,7 @@ export function Monthly() {
                   <td><strong style={{ fontSize:12, color:'var(--mid)' }}>{e.name}</strong><span style={{ fontSize:10, color:'#7c3aed', background:'#f3e8ff', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>Pending</span></td>
                   <td className="amt amt-blue">{fmt(e.salary)}</td>
                   <td colSpan={7} style={{ color:'var(--mid)', fontSize:12, textAlign:'center' }}>Not entered yet</td>
-                  <td><button className="btn btn-success btn-sm" onClick={() => quickAdd(e)}>+ Add</button></td>
+                  <td><button className="btn btn-success btn-sm" disabled={adding.has(e.name)} onClick={() => quickAdd(e)} style={{ opacity:adding.has(e.name)?0.5:1 }}>{adding.has(e.name)?'Adding...':'+ Add'}</button></td>
                 </tr>
               ))}
               {!filtered.length && !pendingEmps.length && <tr><td colSpan={10} style={{ textAlign:'center', padding:28, color:'var(--mid)' }}>No entries for this period</td></tr>}

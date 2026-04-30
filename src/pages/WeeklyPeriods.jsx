@@ -238,6 +238,7 @@ export function Weekly() {
   const [bulkForm, setBulkForm]         = useState({ daysWorked:6, leaves:0, advDeducted:0, shrDeducted:0 })
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saving, setSaving]             = useState(null)
+  const [adding, setAdding]             = useState(new Set())
   const [showPrint, setShowPrint]       = useState(false)
   const [showWhatsApp, setShowWhatsApp] = useState(false)
   const [closedData, setClosedData]     = useState(null)
@@ -273,7 +274,23 @@ export function Weekly() {
     toast.success('Saved ✅', { duration:1000 }); setSaving(null); load()
   }
 
-  const quickAdd = async emp => { await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:6, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id }); toast.success(`${emp.name} added ✅`, { duration:1000 }); load() }
+  const quickAdd = async emp => {
+    if (adding.has(emp.name)) return // prevent duplicate
+    setAdding(prev => new Set([...prev, emp.name]))
+    // Optimistic: immediately move from pending to entered
+    const tempEntry = { id:'temp_'+emp.name, name:emp.name, week_label:activePeriod.label, date:activePeriod.date_from, days_worked:6, leaves:0, adv_deducted:0, shr_deducted:0, period_id:activePeriod.id }
+    setAllWeekly(prev => [...prev, tempEntry])
+    try {
+      await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:6, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
+      toast.success(`${emp.name} added ✅`, { duration:1000 })
+      load()
+    } catch (err) {
+      setAllWeekly(prev => prev.filter(w => w.id !== 'temp_'+emp.name)) // rollback
+      toast.error('Failed: ' + err.message)
+    } finally {
+      setAdding(prev => { const n = new Set(prev); n.delete(emp.name); return n })
+    }
+  }
 
   const bulkAdd = async () => {
     for (const emp of pendingEmps) await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, periodId:activePeriod.id })
@@ -396,7 +413,7 @@ export function Weekly() {
                 <tr key={e.id} style={{ background:'#fffbeb' }}>
                   <td><strong style={{ fontSize:12, color:'var(--mid)' }}>{e.name}</strong><span style={{ fontSize:10, color:'#d97706', background:'#fef3c7', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>Pending</span></td>
                   <td colSpan={7} style={{ color:'var(--mid)', fontSize:12, textAlign:'center' }}>Not entered yet</td>
-                  <td><button className="btn btn-success btn-sm" onClick={() => quickAdd(e)}>+ Add</button></td>
+                  <td><button className="btn btn-success btn-sm" disabled={adding.has(e.name)} onClick={() => quickAdd(e)} style={{ opacity:adding.has(e.name)?0.5:1 }}>{adding.has(e.name)?'Adding...':'+ Add'}</button></td>
                 </tr>
               ))}
               {!filtered.length && !pendingEmps.length && <tr><td colSpan={9} style={{ textAlign:'center', padding:28, color:'var(--mid)' }}>No entries for this period</td></tr>}
