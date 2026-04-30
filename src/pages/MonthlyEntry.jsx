@@ -66,12 +66,13 @@ export function Monthly() {
   const [shortages, setShortages]       = useState([])
   const [bankList, setBankList]         = useState([])
   const [activePeriod, setActivePeriod] = useState(null)
+  const [wd, setWd]                     = useState(26)
   const [loading, setLoading]           = useState(true)
   const [tableError, setTableError]     = useState(false)
   const [confirm, setConfirm]           = useState(null)
   const [search, setSearch]             = useState('')
   const [bulkModal, setBulkModal]       = useState(false)
-  const [bulkForm, setBulkForm]         = useState({ advDeducted:0, shrDeducted:0 })
+  const [bulkForm, setBulkForm]         = useState({ daysWorked:26, leaves:0, advDeducted:0, shrDeducted:0 })
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saving, setSaving]             = useState(null)
   const [closedData, setClosedData]     = useState(null)
@@ -88,10 +89,10 @@ export function Monthly() {
 
   const load = useCallback(async () => {
     try {
-      const [w, e, a, s, ap, b] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank()])
+      const [w, e, a, s, ap, b, wdays] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank(), DB.getWorkingDays()])
       const monthlyEmps = e.filter(emp => isMonthlyEmp(emp.name))
       const periodEntries = ap ? w.filter(x => x.period_id === ap.id) : []
-      setAllMonthly(periodEntries); setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b)
+      setAllMonthly(periodEntries); setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b); setWd(wdays)
       setTableError(false)
     } catch (err) {
       console.error('Monthly load error:', err)
@@ -108,25 +109,25 @@ export function Monthly() {
 
   const enteredNames = new Set(allMonthly.map(m => m.name))
   const pendingEmps  = emps.filter(e => !enteredNames.has(e.name))
-  const totalPay     = allMonthly.reduce((s, m) => s + DB.monthlySalary(m, emps.find(e => e.name === m.name)), 0)
+  const totalPay     = allMonthly.reduce((s, m) => s + DB.monthlySalary(m, emps.find(e => e.name === m.name), wd), 0)
   const filtered     = allMonthly.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
 
   const inlineSave = async (entry, field, newVal) => {
     setSaving(entry.id)
-    await DB.updateMonthly({ id:entry.id, name:entry.name, monthLabel:entry.month_label, date:entry.date, periodId:entry.period_id, advDeducted:field==='adv_deducted'?newVal:entry.adv_deducted, shrDeducted:field==='shr_deducted'?newVal:entry.shr_deducted })
+    await DB.updateMonthly({ id:entry.id, name:entry.name, monthLabel:entry.month_label, date:entry.date, periodId:entry.period_id, daysWorked:field==='days_worked'?newVal:entry.days_worked, leaves:field==='leaves'?newVal:entry.leaves, advDeducted:field==='adv_deducted'?newVal:entry.adv_deducted, shrDeducted:field==='shr_deducted'?newVal:entry.shr_deducted })
     toast.success('Saved ✅', { duration:1000 }); setSaving(null); load()
   }
 
   const quickAdd = async emp => {
     try {
-      await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
+      await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:wd, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
       toast.success(`${emp.name} added ✅`, { duration:1000 }); load()
     } catch (err) { toast.error('Failed: ' + err.message) }
   }
 
   const bulkAdd = async () => {
     try {
-      for (const emp of pendingEmps) await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, periodId:activePeriod.id })
+      for (const emp of pendingEmps) await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:bulkForm.daysWorked, leaves:bulkForm.leaves, advDeducted:bulkForm.advDeducted, shrDeducted:bulkForm.shrDeducted, periodId:activePeriod.id })
       toast.success(`${pendingEmps.length} entries added ✅`); setBulkModal(false); load()
     } catch (err) { toast.error('Failed: ' + err.message) }
   }
@@ -258,17 +259,17 @@ export function Monthly() {
       </div>
 
       <div style={{ background:'#f3e8ff', border:'1px solid #d8b4fe', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#5b21b6', marginBottom:16 }}>
-        💡 <strong>Click any amount</strong> in Adv Ded or Shr Ded to edit directly. Monthly salary = Full salary minus deductions.
+        💡 <strong>Click any value</strong> in Days, Leaves, Adv Ded or Shr Ded to edit inline. Salary = (Gross / {wd} days) × (Days − Leaves) − Deductions.
       </div>
 
       <div className="toolbar">
         <div className="search-box"><input placeholder="Search employee..." value={search} onChange={e => setSearch(e.target.value)} /></div>
       </div>
 
-      <Panel noPad title={`Monthly Attendance — ${activePeriod.label}`} subtitle="Full month salary, no days tracking">
+      <Panel noPad title={`Monthly Attendance — ${activePeriod.label}`} subtitle={`Working days: ${wd}`}>
         <div className="tbl-wrap">
           <table>
-            <thead><tr><th>Employee</th><th>Gross Salary</th><th style={{ textAlign:'center' }}>Adv Ded ✏️</th><th style={{ textAlign:'center' }}>Shr Ded ✏️</th><th>Adv Pending</th><th>Shr Pending</th><th>Net Salary</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th>Gross</th><th style={{ textAlign:'center' }}>Days ✏️</th><th style={{ textAlign:'center' }}>Leaves ✏️</th><th style={{ textAlign:'center' }}>Adv Ded ✏️</th><th style={{ textAlign:'center' }}>Shr Ded ✏️</th><th>Adv Pending</th><th>Shr Pending</th><th>Net Salary</th><th></th></tr></thead>
             <tbody>
               {filtered.map(m => {
                 const emp = emps.find(e => e.name === m.name)
@@ -278,11 +279,13 @@ export function Monthly() {
                   <tr key={m.id} style={{ opacity:saving===m.id?0.5:1, transition:'opacity .2s' }}>
                     <td><strong style={{ fontSize:12 }}>{m.name}</strong>{saving===m.id && <span style={{ fontSize:10, color:'var(--blue)', marginLeft:6 }}>saving...</span>}</td>
                     <td className="amt amt-blue">{fmt(emp?.salary || 0)}</td>
+                    <td style={{ textAlign:'center' }}><InlineCell value={Number(m.days_worked||0)} max={31} onSave={v => inlineSave(m,'days_worked',v)} /></td>
+                    <td style={{ textAlign:'center' }}><InlineCell value={Number(m.leaves||0)} max={31} onSave={v => inlineSave(m,'leaves',v)} /></td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.adv_deducted||0)} onSave={v => inlineSave(m,'adv_deducted',v)} color="var(--red)" /></td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.shr_deducted||0)} onSave={v => inlineSave(m,'shr_deducted',v)} color="var(--red)" /></td>
                     <td className={`amt ${ap>0?'amt-blue':'amt-green'}`}>{fmt(ap)}</td>
                     <td className={`amt ${sp>0?'amt-red':'amt-green'}`}>{fmt(sp)}</td>
-                    <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m, emp))}</strong></td>
+                    <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m, emp, wd))}</strong></td>
                     <td><button className="btn btn-danger btn-sm" onClick={() => setConfirm(m.id)}>🗑️</button></td>
                   </tr>
                 )
@@ -291,11 +294,11 @@ export function Monthly() {
                 <tr key={e.id} style={{ background:'#fdf4ff' }}>
                   <td><strong style={{ fontSize:12, color:'var(--mid)' }}>{e.name}</strong><span style={{ fontSize:10, color:'#7c3aed', background:'#f3e8ff', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>Pending</span></td>
                   <td className="amt amt-blue">{fmt(e.salary)}</td>
-                  <td colSpan={5} style={{ color:'var(--mid)', fontSize:12, textAlign:'center' }}>Not entered yet</td>
+                  <td colSpan={7} style={{ color:'var(--mid)', fontSize:12, textAlign:'center' }}>Not entered yet</td>
                   <td><button className="btn btn-success btn-sm" onClick={() => quickAdd(e)}>+ Add</button></td>
                 </tr>
               ))}
-              {!filtered.length && !pendingEmps.length && <tr><td colSpan={8} style={{ textAlign:'center', padding:28, color:'var(--mid)' }}>No entries for this period</td></tr>}
+              {!filtered.length && !pendingEmps.length && <tr><td colSpan={10} style={{ textAlign:'center', padding:28, color:'var(--mid)' }}>No entries for this period</td></tr>}
             </tbody>
           </table>
         </div>
@@ -303,8 +306,10 @@ export function Monthly() {
 
       {bulkModal && (
         <Modal title={`⚡ Bulk Add — ${activePeriod?.label}`} onClose={() => setBulkModal(false)} onSave={bulkAdd} saveLabel={`⚡ Add All ${pendingEmps.length}`}>
-          <p style={{ fontSize:13, color:'var(--mid)', marginBottom:16 }}>Set default deductions for all {pendingEmps.length} pending monthly employees:</p>
+          <p style={{ fontSize:13, color:'var(--mid)', marginBottom:16 }}>Set default values for all {pendingEmps.length} pending monthly employees:</p>
           <div className="form-grid cols2" style={{ gap:12 }}>
+            <Field label="Days Worked"><input type="number" min={0} max={31} value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
+            <Field label="Leaves"><input type="number" min={0} max={31} value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
             <Field label="Advance Deducted (₹)"><input type="number" min={0} value={bulkForm.advDeducted} onChange={e => setBulkForm(f => ({ ...f, advDeducted:Number(e.target.value) }))} /></Field>
             <Field label="Shortage Deducted (₹)"><input type="number" min={0} value={bulkForm.shrDeducted} onChange={e => setBulkForm(f => ({ ...f, shrDeducted:Number(e.target.value) }))} /></Field>
           </div>

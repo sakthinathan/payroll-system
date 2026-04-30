@@ -74,11 +74,13 @@ export const DB = {
   monthlyByPeriod: pid     => q('GET', 'monthly_entries', null, `?period_id=eq.${pid}&order=name`),
   saveMonthly:     e       => q('POST', 'monthly_entries', {
     id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
+    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
     period_id: e.periodId || null
   }),
   updateMonthly:   e       => q('PATCH', 'monthly_entries', {
     name: e.name, month_label: e.monthLabel, date: e.date || null,
+    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
   }, `?id=eq.${e.id}`),
   deleteMonthly:   id      => q('DELETE', 'monthly_entries', null, `?id=eq.${id}`),
@@ -144,9 +146,11 @@ export const DB = {
   totalShrDeductedMonthly: (name, monthly)  => monthly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0),
   advPendingMonthly:       (name, adv, mly) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeductedMonthly(name, mly),
   shrPendingMonthly:       (name, shr, mly) => DB.totalShrGiven(name, shr) - DB.totalShrDeductedMonthly(name, mly),
-  monthlySalary:           (entry, emp)     => {
+  monthlySalary:           (entry, emp, wd)     => {
     if (!emp) return 0
-    return Math.max(0, Number(emp.salary) - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0))
+    const pd = emp.salary / (wd || 26)
+    const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
+    return Math.max(0, pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0))
   },
 
   // Auth (localStorage)
