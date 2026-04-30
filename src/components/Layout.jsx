@@ -18,6 +18,7 @@ const NAV = [
     { to: '/shortages', icon: '⚠️', label: 'Shortage Log' },
   ]},
   { section: 'Reports', items: [
+    { to: '/ledger', icon: '📜', label: 'History' },
     { to: '/deductions', icon: '📋', label: 'Deduction Master' },
     { to: '/payslip', icon: '🧾', label: 'Payslip' },
   ]},
