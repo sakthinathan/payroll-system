@@ -1,43 +1,67 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { DB, fmt } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { KpiCard, Panel, Spinner, ProgressBar } from '../components/UI'
 
 export default function Dashboard() {
-  const [data, setData] = useState(null)
+  const [rawData, setRawData] = useState(null)
 
   useEffect(() => {
     async function load() {
       const [emps, weekly, advances, shortages, wd] = await Promise.all([
         DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays()
       ])
-      const totalPayroll = emps.reduce((s, e) => s + Number(e.salary), 0)
-      const totalNet = weekly.reduce((s, w) => s + DB.weekSalary(w, emps.find(e => e.name === w.name), wd), 0)
-      const pendAdv = emps.reduce((s, e) => s + DB.advPending(e.name, advances, weekly), 0)
-      const pendShr = emps.reduce((s, e) => s + DB.shrPending(e.name, shortages, weekly), 0)
-      const payMap = {}
-      weekly.forEach(w => {
-        const emp = emps.find(e => e.name === w.name)
-        if (!emp) return
-        payMap[w.name] = (payMap[w.name] || 0) + DB.weekSalary(w, emp, wd)
-      })
-      const top5 = Object.entries(payMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
-      const recent = [...weekly].slice(0, 8)
-      const advOverview = emps.filter(e => DB.totalAdvGiven(e.name, advances) || DB.totalShrGiven(e.name, shortages))
-      setData({ emps, weekly, advances, shortages, wd, totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview })
+      setRawData({ emps, weekly, advances, shortages, wd })
     }
     load()
   }, [])
 
-  if (!data) return <Layout title="📊 Dashboard"><Spinner /></Layout>
+  const stats = useMemo(() => {
+    if (!rawData) return null
+    const { emps, weekly, advances, shortages, wd } = rawData
 
-  const { emps, weekly, advances, shortages, wd, totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview } = data
+    // 1. Create Lookup Maps (O(N))
+    const empMap  = DB.createEmpMap(emps)
+    const advMap  = DB.createAdvMap(advances)
+    const shrMap  = DB.createAdvMap(shortages) // Reusing same logic for shortages
+    const dedMapW = DB.createDedMap(weekly)
+
+    // 2. Efficient single-pass calculations (O(N))
+    const totalPayroll = emps.reduce((s, e) => s + Number(e.salary), 0)
+    
+    let totalNet = 0
+    const payMap = {}
+    weekly.forEach(w => {
+      const emp = empMap[w.name]
+      if (!emp) return
+      const sal = DB.weekSalary(w, emp, wd)
+      totalNet += sal
+      payMap[w.name] = (payMap[w.name] || 0) + sal
+    })
+
+    const pendAdv = emps.reduce((s, e) => s + ((advMap[e.name] || 0) - (dedMapW.adv[e.name] || 0)), 0)
+    const pendShr = emps.reduce((s, e) => s + ((shrMap[e.name] || 0) - (dedMapW.shr[e.name] || 0)), 0)
+
+    const top5 = Object.entries(payMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    const recent = [...weekly].slice(0, 8)
+    
+    const advOverview = emps.filter(e => advMap[e.name] || shrMap[e.name] || dedMapW.adv[e.name] || dedMapW.shr[e.name])
+
+    return { 
+      totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview, 
+      empMap, advMap, shrMap, dedMapW, wd 
+    }
+  }, [rawData])
+
+  if (!stats) return <Layout title="📊 Dashboard"><Spinner /></Layout>
+
+  const { totalPayroll, totalNet, pendAdv, pendShr, top5, recent, advOverview, empMap, advMap, shrMap, dedMapW, wd } = stats
   const maxPay = top5[0]?.[1] || 1
 
   return (
     <Layout title="📊 Dashboard">
       <div className="kpi-grid">
-        <KpiCard label="Total Payroll" value={fmt(totalPayroll)} sub={`Monthly gross · ${emps.length} employees`} icon="💼" color="blue" />
+        <KpiCard label="Total Payroll" value={fmt(totalPayroll)} sub={`Monthly gross · ${Object.keys(empMap).length} employees`} icon="💼" color="blue" />
         <KpiCard label="Total Net Paid" value={fmt(totalNet)} sub="All weekly entries" icon="✅" color="green" />
         <KpiCard label="Advance Pending" value={fmt(pendAdv)} sub="Still to recover" icon="💸" color="red" />
         <KpiCard label="Shortage Pending" value={fmt(pendShr)} sub="Still to recover" icon="⚠️" color="orange" />
@@ -58,14 +82,15 @@ export default function Dashboard() {
 
         <Panel title="Recent Weekly Entries" noPad>
           {recent.length ? (
-            <div className="tbl-wrap">              <table>
+            <div className="tbl-wrap">
+              <table>
                 <thead><tr><th>Employee</th><th>Week</th><th>Salary</th></tr></thead>
                 <tbody>
                   {recent.map(w => (
                     <tr key={w.id}>
                       <td><strong style={{ fontSize: 12 }}>{w.name}</strong></td>
                       <td><span className="badge badge-blue">{w.week_label || '—'}</span></td>
-                      <td className="amt amt-green">{fmt(DB.weekSalary(w, emps.find(e => e.name === w.name), wd))}</td>
+                      <td className="amt amt-green">{fmt(DB.weekSalary(w, empMap[w.name], wd))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -76,20 +101,25 @@ export default function Dashboard() {
       </div>
 
       <Panel title="Advance & Shortage Overview" noPad>
-        <div className="tbl-wrap">          <table>
+        <div className="tbl-wrap">
+          <table>
             <thead><tr><th>Employee</th><th>Adv Given</th><th>Adv Deducted</th><th>Adv Pending</th><th>Shr Given</th><th>Shr Deducted</th><th>Shr Pending</th></tr></thead>
             <tbody>
               {advOverview.length ? advOverview.map(e => {
-                const ap = DB.advPending(e.name, advances, weekly)
-                const sp = DB.shrPending(e.name, shortages, weekly)
+                const aGiven = advMap[e.name] || 0
+                const aDed   = dedMapW.adv[e.name] || 0
+                const sGiven = shrMap[e.name] || 0
+                const sDed   = dedMapW.shr[e.name] || 0
+                const ap = aGiven - aDed
+                const sp = sGiven - sDed
                 return (
                   <tr key={e.id}>
                     <td><strong>{e.name}</strong></td>
-                    <td className="amt">{fmt(DB.totalAdvGiven(e.name, advances))}</td>
-                    <td className="amt">{fmt(DB.totalAdvDeducted(e.name, weekly))}</td>
+                    <td className="amt">{fmt(aGiven)}</td>
+                    <td className="amt">{fmt(aDed)}</td>
                     <td className={`amt ${ap > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(ap)}</td>
-                    <td className="amt">{fmt(DB.totalShrGiven(e.name, shortages))}</td>
-                    <td className="amt">{fmt(DB.totalShrDeducted(e.name, weekly))}</td>
+                    <td className="amt">{fmt(sGiven)}</td>
+                    <td className="amt">{fmt(sDed)}</td>
                     <td className={`amt ${sp > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(sp)}</td>
                   </tr>
                 )

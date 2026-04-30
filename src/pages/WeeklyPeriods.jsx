@@ -225,6 +225,7 @@ export function Periods() {
 
 export function Weekly() {
   const [allWeekly, setAllWeekly]       = useState([])
+  const [allWeeklyHist, setAllWeeklyHist] = useState([])
   const [emps, setEmps]                 = useState([])
   const [advances, setAdvances]         = useState([])
   const [shortages, setShortages]       = useState([])
@@ -256,22 +257,65 @@ export function Weekly() {
   }, [newPeriod.month, newPeriod.year, newPeriod.weekNum])
 
   const load = useCallback(async () => {
-    const [w,e,a,s,wdays,ap,b] = await Promise.all([DB.weekly(),DB.employees(),DB.advances(),DB.shortages(),DB.getWorkingDays(),DB.openPeriod(),DB.bank()])
-    const periodEntries = ap ? w.filter(x => x.period_id===ap.id) : []
-    setAllWeekly(periodEntries); setEmps(e); setAdvances(a); setShortages(s); setWd(wdays); setActivePeriod(ap); setBankList(b); setLoading(false)
+    const [allW, e, a, s, wdays, ap, b] = await Promise.all([
+      DB.weekly(), DB.employees(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod(), DB.bank()
+    ])
+    
+    setEmps(e); setAdvances(a); setShortages(s); setWd(wdays); setActivePeriod(ap); setBankList(b);
+    
+    // We keep allW (historical) for balance calculation, but filter allWeekly for current display
+    if (ap) {
+      setAllWeekly(allW.filter(x => x.period_id === ap.id))
+      setAllWeeklyHist(allW) 
+    } else {
+      setAllWeekly([])
+      setAllWeeklyHist([])
+    }
+    setLoading(false)
   }, [])
+  
   useEffect(() => { load() }, [load])
 
-  const enteredNames = new Set(allWeekly.map(w => w.name))
-  const weeklyOnlyEmps = emps.filter(e => !isMonthlyEmp(e.name))
-  const pendingEmps  = weeklyOnlyEmps.filter(e => !enteredNames.has(e.name))
-  const totalPay     = allWeekly.reduce((s,w) => s + DB.weekSalary(w, emps.find(e => e.name===w.name), wd), 0)
-  const filtered     = allWeekly.filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
+  // 1. High-performance derived data (O(N))
+  const stats = useMemo(() => {
+    if (loading || !emps.length) return { empMap: {}, advMap: {}, shrMap: {}, dedMap: {}, pending: [], total: 0 }
+    
+    const empMap  = DB.createEmpMap(emps)
+    const advMap  = DB.createAdvMap(advances)
+    const shrMap  = DB.createAdvMap(shortages)
+    const dedMap  = DB.createDedMap(allWeeklyHist) // Uses ALL historical deductions
+    
+    const enteredNames = new Set(allWeekly.map(w => w.name))
+    const weeklyOnly   = emps.filter(e => !isMonthlyEmp(e.name))
+    const pending      = weeklyOnly.filter(e => !enteredNames.has(e.name))
+    
+    const total = allWeekly.reduce((s, w) => s + DB.weekSalary(w, empMap[w.name], wd), 0)
+    
+    return { empMap, advMap, shrMap, dedMap, pending, total, weeklyOnly }
+  }, [allWeekly, allWeeklyHist, emps, advances, shortages, wd, loading])
+
+  const { empMap, advMap, shrMap, dedMap, pending: pendingEmps, total: totalPay, weeklyOnly: weeklyOnlyEmps } = stats
+  const filtered = allWeekly.filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
 
   const inlineSave = async (entry, field, newVal) => {
+    // Optimistic Update
+    setAllWeekly(prev => prev.map(w => w.id === entry.id ? { ...w, [field]: newVal } : w))
     setSaving(entry.id)
-    await DB.updateWeekly({ id:entry.id, name:entry.name, weekLabel:entry.week_label, date:entry.date, periodId:entry.period_id, daysWorked:field==='days_worked'?newVal:entry.days_worked, leaves:field==='leaves'?newVal:entry.leaves, advDeducted:field==='adv_deducted'?newVal:entry.adv_deducted, shrDeducted:field==='shr_deducted'?newVal:entry.shr_deducted })
-    toast.success('Saved ✅', { duration:1000 }); setSaving(null); load()
+    try {
+      await DB.updateWeekly({ 
+        id: entry.id, name: entry.name, weekLabel: entry.week_label, date: entry.date, periodId: entry.period_id, 
+        daysWorked:   field === 'days_worked'   ? newVal : (entry.days_worked || 0), 
+        leaves:       field === 'leaves'        ? newVal : (entry.leaves || 0), 
+        advDeducted:  field === 'adv_deducted'  ? newVal : (entry.adv_deducted || 0), 
+        shrDeducted:  field === 'shr_deducted'  ? newVal : (entry.shr_deducted || 0) 
+      })
+      toast.success('Saved ✅', { duration: 800 })
+    } catch (err) {
+      toast.error('Save failed: ' + err.message)
+      load()
+    } finally {
+      setSaving(null)
+    }
   }
 
   const quickAdd = async emp => {
@@ -394,7 +438,17 @@ export function Weekly() {
             <thead><tr><th>Employee</th><th style={{ textAlign:'center' }}>Days ✏️</th><th style={{ textAlign:'center' }}>Leaves ✏️</th><th style={{ textAlign:'center' }}>Adv Ded ✏️</th><th style={{ textAlign:'center' }}>Shr Ded ✏️</th><th>Adv Pending</th><th>Shr Pending</th><th>Salary</th><th></th></tr></thead>
             <tbody>
               {filtered.map(w => {
-                const emp = emps.find(e => e.name===w.name), ap = DB.advPending(w.name,advances,allWeekly), sp = DB.shrPending(w.name,shortages,allWeekly)
+                const emp = empMap[w.name]
+                if (!emp) return null
+                
+                const aGiven = advMap[w.name] || 0
+                const aDed   = dedMap.adv[w.name] || 0
+                const sGiven = shrMap[w.name] || 0
+                const sDed   = dedMap.shr[w.name] || 0
+                
+                const ap = aGiven - aDed
+                const sp = sGiven - sDed
+
                 return (
                   <tr key={w.id} style={{ opacity:saving===w.id?0.5:1, transition:'opacity .2s' }}>
                     <td><strong style={{ fontSize:12 }}>{w.name}</strong>{saving===w.id && <span style={{ fontSize:10, color:'var(--blue)', marginLeft:6 }}>saving...</span>}</td>

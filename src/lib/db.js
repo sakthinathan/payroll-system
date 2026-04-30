@@ -1,6 +1,6 @@
 // ── Supabase config ──────────────────────────────────────────────
-const SUPA_URL = 'https://xzoawoypsldhoucmcuqk.supabase.co'
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6b2F3b3lwc2xkaG91Y21jdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDI0ODEsImV4cCI6MjA4OTA3ODQ4MX0._Z8ZF8aHLr4HwQzVToe3w_sSDht4oTOHlOK86Oarhok'
+const SUPA_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 const H = {
   'apikey': SUPA_KEY,
@@ -128,20 +128,41 @@ export const DB = {
 
   // Computed helpers — Weekly
   perDay:              (emp, wd)             => emp.salary / (wd || 26),
+  
+  // High-performance Map creators for O(1) lookups
+  createEmpMap: (emps) => {
+    const map = {}; emps.forEach(e => map[e.name] = e); return map;
+  },
+  createAdvMap: (advances) => {
+    const map = {}; advances.forEach(a => { if(!map[a.name]) map[a.name] = 0; map[a.name] += Number(a.amount || 0) }); return map;
+  },
+  createDedMap: (entries) => {
+    const map = { adv: {}, shr: {} };
+    entries.forEach(e => {
+      if(!map.adv[e.name]) map.adv[e.name] = 0;
+      if(!map.shr[e.name]) map.shr[e.name] = 0;
+      map.adv[e.name] += Number(e.adv_deducted || 0);
+      map.shr[e.name] += Number(e.shr_deducted || 0);
+    });
+    return map;
+  },
+
   totalAdvGiven:       (name, advances)      => advances.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
   totalShrGiven:       (name, shortages)     => shortages.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
   totalAdvDeducted:    (name, weekly)        => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.adv_deducted || 0), 0),
   totalShrDeducted:    (name, weekly)        => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.shr_deducted || 0), 0),
+  
   advPending:          (name, adv, wkly)     => DB.totalAdvGiven(name, adv) - DB.totalAdvDeducted(name, wkly),
   shrPending:          (name, shr, wkly)     => DB.totalShrGiven(name, shr) - DB.totalShrDeducted(name, wkly),
+  
   weekSalary:          (entry, emp, wd)      => {
     if (!emp) return 0
     const pd = DB.perDay(emp, wd)
     const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
-    return Math.max(0, pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0))
+    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
   },
 
-  // Computed helpers — Monthly (full salary minus deductions, no days tracking)
+  // Computed helpers — Monthly
   totalAdvDeductedMonthly: (name, monthly)  => monthly.filter(m => m.name === name).reduce((s, m) => s + Number(m.adv_deducted || 0), 0),
   totalShrDeductedMonthly: (name, monthly)  => monthly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0),
   advPendingMonthly:       (name, adv, mly) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeductedMonthly(name, mly),
@@ -150,7 +171,7 @@ export const DB = {
     if (!emp) return 0
     const pd = emp.salary / (wd || 26)
     const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
-    return Math.max(0, pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0))
+    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
   },
 
   // Auth (localStorage)

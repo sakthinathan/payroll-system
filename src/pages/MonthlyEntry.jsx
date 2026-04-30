@@ -75,6 +75,7 @@ export function Monthly() {
   const [bulkForm, setBulkForm]         = useState({ daysWorked:26, leaves:0, advDeducted:0, shrDeducted:0 })
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saving, setSaving]             = useState(null)
+  const [allMonthlyHist, setAllMonthlyHist] = useState([])
   const [adding, setAdding]             = useState(new Set())
   const [closedData, setClosedData]     = useState(null)
 
@@ -90,10 +91,17 @@ export function Monthly() {
 
   const load = useCallback(async () => {
     try {
-      const [w, e, a, s, ap, b, wdays] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank(), DB.getWorkingDays()])
+      const [allM, e, a, s, ap, b, wdays] = await Promise.all([DB.monthlyAll(), DB.employees(), DB.advances(), DB.shortages(), DB.openMonthlyPeriod(), DB.bank(), DB.getWorkingDays()])
       const monthlyEmps = e.filter(emp => isMonthlyEmp(emp.name))
-      const periodEntries = ap ? w.filter(x => x.period_id === ap.id) : []
-      setAllMonthly(periodEntries); setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b); setWd(wdays)
+      
+      setEmps(monthlyEmps); setAdvances(a); setShortages(s); setActivePeriod(ap); setBankList(b); setWd(wdays)
+      setAllMonthlyHist(allM)
+
+      if (ap) {
+        setAllMonthly(allM.filter(x => x.period_id === ap.id))
+      } else {
+        setAllMonthly([])
+      }
       setTableError(false)
     } catch (err) {
       console.error('Monthly load error:', err)
@@ -108,10 +116,24 @@ export function Monthly() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const enteredNames = new Set(allMonthly.map(m => m.name))
-  const pendingEmps  = emps.filter(e => !enteredNames.has(e.name))
-  const totalPay     = allMonthly.reduce((s, m) => s + DB.monthlySalary(m, emps.find(e => e.name === m.name), wd), 0)
-  const filtered     = allMonthly.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
+  // High-performance derived data
+  const stats = useMemo(() => {
+    if (loading || !emps.length) return { empMap: {}, advMap: {}, shrMap: {}, dedMap: {}, pending: [], total: 0 }
+    
+    const empMap  = DB.createEmpMap(emps)
+    const advMap  = DB.createAdvMap(advances)
+    const shrMap  = DB.createAdvMap(shortages)
+    const dedMap  = DB.createDedMap(allMonthlyHist)
+    
+    const enteredNames = new Set(allMonthly.map(m => m.name))
+    const pending      = emps.filter(e => !enteredNames.has(e.name))
+    const total        = allMonthly.reduce((s, m) => s + DB.monthlySalary(m, empMap[m.name], wd), 0)
+    
+    return { empMap, advMap, shrMap, dedMap, pending, total }
+  }, [allMonthly, allMonthlyHist, emps, advances, shortages, wd, loading])
+
+  const { empMap, advMap, shrMap, dedMap, pending: pendingEmps, total: totalPay } = stats
+  const filtered = allMonthly.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()))
 
   const inlineSave = async (entry, field, newVal) => {
     // Optimistic update — immediately reflect change in UI so salary recalculates instantly
@@ -299,20 +321,28 @@ export function Monthly() {
             <thead><tr><th>Employee</th><th>Gross</th><th style={{ textAlign:'center' }}>Days ✏️</th><th style={{ textAlign:'center' }}>Leaves ✏️</th><th style={{ textAlign:'center' }}>Adv Ded ✏️</th><th style={{ textAlign:'center' }}>Shr Ded ✏️</th><th>Adv Pending</th><th>Shr Pending</th><th>Net Salary</th><th></th></tr></thead>
             <tbody>
               {filtered.map(m => {
-                const emp = emps.find(e => e.name === m.name)
-                const ap = DB.advPendingMonthly(m.name, advances, allMonthly)
-                const sp = DB.shrPendingMonthly(m.name, shortages, allMonthly)
+                const emp = empMap[m.name]
+                if (!emp) return null
+                
+                const aGiven = advMap[m.name] || 0
+                const aDed   = dedMap.adv[m.name] || 0
+                const sGiven = shrMap[m.name] || 0
+                const sDed   = dedMap.shr[m.name] || 0
+                
+                const ap = aGiven - aDed
+                const sp = sGiven - sDed
+
                 return (
                   <tr key={m.id} style={{ opacity:saving===m.id?0.5:1, transition:'opacity .2s' }}>
                     <td><strong style={{ fontSize:12 }}>{m.name}</strong>{saving===m.id && <span style={{ fontSize:10, color:'var(--blue)', marginLeft:6 }}>saving...</span>}</td>
-                    <td className="amt amt-blue">{fmt(emp?.salary || 0)}</td>
+                    <td className="amt amt-blue">{fmt(emp.salary)}</td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.days_worked||0)} max={31} onSave={v => inlineSave(m,'days_worked',v)} /></td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.leaves||0)} max={31} onSave={v => inlineSave(m,'leaves',v)} /></td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.adv_deducted||0)} onSave={v => inlineSave(m,'adv_deducted',v)} color="var(--red)" /></td>
                     <td style={{ textAlign:'center' }}><InlineCell value={Number(m.shr_deducted||0)} onSave={v => inlineSave(m,'shr_deducted',v)} color="var(--red)" /></td>
                     <td className={`amt ${ap>0?'amt-blue':'amt-green'}`}>{fmt(ap)}</td>
                     <td className={`amt ${sp>0?'amt-red':'amt-green'}`}>{fmt(sp)}</td>
-                    <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m, emp, wd))}</strong></td>
+                    <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m,emp,wd))}</strong></td>
                     <td><button className="btn btn-danger btn-sm" onClick={() => setConfirm(m.id)}>🗑️</button></td>
                   </tr>
                 )
