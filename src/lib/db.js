@@ -24,31 +24,16 @@ export const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).s
 export const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 export const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
-// ── Monthly salary employee names (hardcoded list) ─────────────────
-export const MONTHLY_EMP_NAMES = [
-  'RAJESH S',
-  'MANIKANDAN A',
-  'MATHIYARASU',
-  'NAVEEN',
-  'MANJULA',
-  'GOKUL',
-  'GOWTHAM',
-  'VIGNESH',
-  'PARAMASIVAM',
-  'SEKAR A',
-  'JANARTHANAN',
-  'SYED MUSTHAFA',
-  'SEKAR MADHESH',
-]
+// isMonthlyEmp is deprecated. Use e.salary_type === 'monthly' instead.
+export const isMonthlyEmp = name => false 
 
-export const isMonthlyEmp = name => MONTHLY_EMP_NAMES.includes(name)
 
 // ── DB API ────────────────────────────────────────────────────────
 export const DB = {
   // Employees
   employees:       ()      => q('GET', 'employees', null, '?order=name'),
-  weeklyEmps:      ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => !isMonthlyEmp(e.name))),
-  monthlyEmps:     ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => isMonthlyEmp(e.name))),
+  weeklyEmps:      ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => e.salary_type === 'weekly' || !e.salary_type)),
+  monthlyEmps:     ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => e.salary_type === 'monthly')),
   saveEmployee:    emp     => q('POST', 'employees', { id: emp.id, name: emp.name, salary: emp.salary, salary_type: emp.salaryType || 'weekly' }),
   updateEmployee:  emp     => q('PATCH', 'employees', { name: emp.name, salary: emp.salary, salary_type: emp.salaryType || 'weekly' }, `?id=eq.${emp.id}`),
   deleteEmployee:  id      => q('DELETE', 'employees', null, `?id=eq.${id}`),
@@ -195,7 +180,7 @@ export const DB = {
       ["KEERTHANA S",20000],["SIVAPRASANTH GOVINDARAJ",16500],
     ]
     for (const [name, salary] of names) {
-      await DB.saveEmployee({ id: uid(), name, salary, salaryType: isMonthlyEmp(name) ? 'monthly' : 'weekly' })
+      await DB.saveEmployee({ id: uid(), name, salary, salaryType: 'weekly' })
     }
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { DB, fmt, isMonthlyEmp } from '../lib/db'
+import { DB, fmt } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Panel, Spinner } from '../components/UI'
 
@@ -14,7 +14,7 @@ export function MonthlyPeriods() {
   const load = useCallback(async () => {
     const [p, e] = await Promise.all([DB.monthlyPeriods(), DB.employees()])
     setPeriods(p)
-    setEmps(e.filter(emp => isMonthlyEmp(emp.name)))
+    setEmps(e.filter(emp => emp.salary_type === 'monthly'))
     setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])

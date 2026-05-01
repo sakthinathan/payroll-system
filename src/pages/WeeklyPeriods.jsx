@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import toast from 'react-hot-toast'
-import { DB, fmt, uid, isMonthlyEmp } from '../lib/db'
+import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 
@@ -286,7 +286,7 @@ export function Weekly() {
     const dedMap  = DB.createDedMap(allWeeklyHist) // Uses ALL historical deductions
     
     const enteredNames = new Set(allWeekly.map(w => w.name))
-    const weeklyOnly   = emps.filter(e => !isMonthlyEmp(e.name))
+    const weeklyOnly   = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type)
     const pending      = weeklyOnly.filter(e => !enteredNames.has(e.name))
     
     const total = allWeekly.reduce((s, w) => s + DB.weekSalary(w, empMap[w.name], wd), 0)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { DB, fmt, uid, isMonthlyEmp } from '../lib/db'
+import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 
@@ -22,8 +22,8 @@ export default function Employees() {
 
   useEffect(() => { load() }, [load])
 
-  const weeklyList  = emps.filter(e => !isMonthlyEmp(e.name))
-  const monthlyList = emps.filter(e => isMonthlyEmp(e.name))
+  const weeklyList  = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type)
+  const monthlyList = emps.filter(e => e.salary_type === 'monthly')
   const displayList = (activeTab === 'weekly' ? weeklyList : monthlyList)
     .filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -42,7 +42,7 @@ export default function Employees() {
     setModal({ type: 'add' })
   }
   const openEdit = emp => {
-    setForm({ name: emp.name, salary: emp.salary, salaryType: isMonthlyEmp(emp.name) ? 'monthly' : 'weekly' })
+    setForm({ name: emp.name, salary: emp.salary, salaryType: emp.salary_type || 'weekly' })
     setModal({ type: 'edit', emp })
   }
 
@@ -132,7 +132,7 @@ export default function Employees() {
                 <tr key={e.id}>
                   <td><strong style={{ fontSize: 12, color: 'var(--navy)' }}>{e.name}</strong></td>
                   <td>
-                    {isMonthlyEmp(e.name)
+                    {e.salary_type === 'monthly'
                       ? <span style={{ background: '#f3e8ff', color: '#7c3aed', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>🗓️ Monthly</span>
                       : <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>📅 Weekly</span>
                     }
