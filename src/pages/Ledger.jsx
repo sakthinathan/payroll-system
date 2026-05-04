@@ -5,7 +5,7 @@ import { Panel, Spinner } from '../components/UI'
 import { motion } from 'framer-motion'
 import { 
   History, Wallet, TrendingDown, 
-  Search, User, CreditCard, ArrowUpRight 
+  Search, User, CreditCard, ArrowUpRight, AlertTriangle 
 } from 'lucide-react'
 
 export default function Ledger() {
