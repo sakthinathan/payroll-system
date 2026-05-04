@@ -94,7 +94,7 @@ export default function Login() {
                 <input
                   type="email"
                   required
-                  className="login-input-v2"
+                  className="form-input"
                   placeholder="name@thulir.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -109,7 +109,7 @@ export default function Login() {
                 <input
                   type={showPw ? 'text' : 'password'}
                   required
-                  className="login-input-v2"
+                  className="form-input"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}

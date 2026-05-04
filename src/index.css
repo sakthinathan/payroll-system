@@ -296,9 +296,112 @@ select.form-input {
 
 .login-card-v2 {
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 40px;
+  width: 100%;
+}
+
+.login-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.login-header-v2 {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-logo-v2 {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--blue), var(--indigo));
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.5);
+}
+
+.login-field-v2 {
+  margin-bottom: 24px;
+}
+.login-field-v2 label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+.login-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.login-input-group .icon-left {
+  position: absolute;
+  left: 18px;
+  color: var(--slate);
+  opacity: 0.4;
+  display: flex;
+}
+.login-input-group .form-input {
+  padding-left: 52px;
+}
+
+.login-btn-v2 {
+  width: 100%;
+  background: var(--navy);
+  color: #fff;
+  padding: 16px;
+  border-radius: 16px;
+  border: none;
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.3);
+}
+.login-btn-v2:hover:not(:disabled) {
+  background: var(--slate);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.4);
+}
+.login-btn-v2:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-toast {
+  background: #fff1f2;
+  border: 1px solid #fecaca;
+  color: #e11d48;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.glow-blue {
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
 }
 
 /* ── UTILITIES ──────────────────────────────────── */
