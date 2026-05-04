@@ -71,9 +71,10 @@ export default function Ledger() {
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
                 <select 
+                  className="form-input"
                   value={selEmp} 
                   onChange={e => setSelEmp(e.target.value)}
-                  style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontSize: 14, fontWeight: 700, appearance: 'none' }}
+                  style={{ paddingLeft: 48 }}
                 >
                   {data.emps.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
                 </select>

@@ -166,8 +166,8 @@ export function Monthly() {
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <Panel title="Initialize Monthly Payroll" subtitle={`Managing ${emps.length} staff members`}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-              <Field label="Month"><select value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
-              <Field label="Year"><select value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year:Number(e.target.value) }))}>{[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map(y => <option key={y}>{y}</option>)}</select></Field>
+              <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
+              <Field label="Year"><select className="form-input" value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year:Number(e.target.value) }))}>{[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map(y => <option key={y}>{y}</option>)}</select></Field>
             </div>
             <div style={{ background: 'var(--bg)', padding: '24px', borderRadius: 20, border: '1px solid var(--border)', marginBottom: 24 }}>
               <strong style={{ fontSize: 18, color: 'var(--navy)' }}>{newPeriod.label}</strong>

@@ -191,14 +191,14 @@ export default function Employees() {
         <Modal title={modal.type === 'add' ? 'Add New Staff' : 'Update Staff Record'} onClose={() => setModal(null)} onSave={save}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
             <Field label="Full Name">
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Enter name in CAPS" className="login-input-v2" style={{ paddingLeft: 16 }} />
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Enter name in CAPS" className="form-input" />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <Field label="Monthly Base Salary (₹)">
-                <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="e.g. 18000" className="login-input-v2" style={{ paddingLeft: 16 }} />
+                <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="e.g. 18000" className="form-input" />
               </Field>
               <Field label="Salary Classification">
-                <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))} className="login-input-v2" style={{ paddingLeft: 16 }}>
+                <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))} className="form-input">
                   <option value="weekly">Weekly Payment</option>
                   <option value="monthly">Monthly Payment</option>
                 </select>

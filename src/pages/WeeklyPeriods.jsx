@@ -372,9 +372,9 @@ export function Weekly() {
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <Panel title="Initialize New Period" subtitle="Begin weekly payroll processing">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-              <Field label="Month"><select value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
+              <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
               <Field label="Week Number">
-                <select value={newPeriod.weekNum} onChange={e => setNewPeriod(p => ({ ...p, weekNum:Number(e.target.value) }))}>
+                <select className="form-input" value={newPeriod.weekNum} onChange={e => setNewPeriod(p => ({ ...p, weekNum:Number(e.target.value) }))}>
                   <option value={1}>Week 1</option><option value={2}>Week 2</option><option value={3}>Week 3</option><option value={4}>Week 4</option><option value={5}>Week 5</option>
                 </select>
               </Field>
