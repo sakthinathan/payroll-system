@@ -1,17 +1,22 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
-  Download, Database, Key, LogOut, ChevronRight
+  Download, Database, Key, LogOut, Menu, X
 } from 'lucide-react'
 
 export function Layout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+
+  // Close menu on route change
+  useEffect(() => setIsMenuOpen(false), [location.pathname])
 
   const navItems = [
     { section: 'Overview', items: [
@@ -49,10 +54,29 @@ export function Layout({ children, title }) {
     <div id="app">
       <div className="app-bg" />
       
-      <aside id="sidebar">
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMenuOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', zIndex: 90 }}
+          />
+        )}
+      </AnimatePresence>
+
+      <aside id="sidebar" className={isMenuOpen ? 'open' : ''}>
         <div className="sidebar-logo">
-          <h1>THULIR AGENCY</h1>
-          <span>Payroll Management v2.0</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1>THULIR AGENCY</h1>
+              <span>Payroll v2.0</span>
+            </div>
+            <button className="mobile-only" onClick={() => setIsMenuOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.5 }}>
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         <nav style={{ paddingBottom: 40 }}>
@@ -78,30 +102,27 @@ export function Layout({ children, title }) {
             </button>
           </div>
         </nav>
-
-        <div className="sidebar-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
-            <span style={{ opacity: 0.8 }}>Supabase Cloud Connected</span>
-          </div>
-          &copy; 2026 Thulir Agency
-        </div>
       </aside>
 
       <main id="main">
         <header id="topbar">
-          <div>
-            <h2>{title}</h2>
-            <div className="meta">{today}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="mobile-only btn" style={{ padding: 8, background: '#fff', border: '1px solid var(--border)' }} onClick={() => setIsMenuOpen(true)}>
+              <Menu size={20} />
+            </button>
+            <div>
+              <h2>{title}</h2>
+              <div className="meta">{today}</div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'right' }} className="desktop-only">
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>{user?.email?.split('@')[0]}</div>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--blue)', textTransform: 'capitalize' }}>Administrator</div>
             </div>
             <div 
-              style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--navy)', color: '#fff', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}
+              style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--navy)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}
               onClick={() => navigate('/changepw')}
             >
               <div style={{ margin: 'auto' }}>{user?.email?.[0].toUpperCase()}</div>
