@@ -1,120 +1,206 @@
-// ── Supabase config ──────────────────────────────────────────────
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || 'https://xzoawoypsldhoucmcuqk.supabase.co'
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6b2F3b3lwc2xkaG91Y21jdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDI0ODEsImV4cCI6MjA4OTA3ODQ4MX0._Z8ZF8aHLr4HwQzVToe3w_sSDht4oTOHlOK86Oarhok'
+import { createClient } from '@supabase/supabase-js'
 
-const H = {
-  'apikey': SUPA_KEY,
-  'Authorization': 'Bearer ' + SUPA_KEY,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
+// ── Supabase Setup ────────────────────────────────────────────────
+const SUPA_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!SUPA_URL || !SUPA_KEY) {
+  console.error('Supabase credentials missing in .env')
 }
 
-async function q(method, table, body = null, qs = '') {
-  const url = `${SUPA_URL}/rest/v1/${table}${qs}`
-  const opts = { method, headers: { ...H } }
-  if (body) opts.body = JSON.stringify(body)
-  if (method === 'GET') delete opts.headers['Prefer']
-  const res = await fetch(url, opts)
-  if (!res.ok) throw new Error(await res.text())
-  const txt = await res.text()
-  return txt ? JSON.parse(txt) : []
-}
+export const supabase = createClient(SUPA_URL, SUPA_KEY)
 
-export const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+// ── Utilities ─────────────────────────────────────────────────────
+export const uid = () => crypto.randomUUID()
 export const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 export const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
-
-// isMonthlyEmp is deprecated. Use e.salary_type === 'monthly' instead.
-export const isMonthlyEmp = name => false 
-
 
 // ── DB API ────────────────────────────────────────────────────────
 export const DB = {
   // Employees
-  employees:       ()      => q('GET', 'employees', null, '?order=name'),
-  weeklyEmps:      ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => e.salary_type === 'weekly' || !e.salary_type)),
-  monthlyEmps:     ()      => q('GET', 'employees', null, '?order=name').then(list => list.filter(e => e.salary_type === 'monthly')),
-  saveEmployee:    emp     => q('POST', 'employees', { id: emp.id, name: emp.name, salary: emp.salary, salary_type: emp.salaryType || 'weekly' }),
-  updateEmployee:  emp     => q('PATCH', 'employees', { name: emp.name, salary: emp.salary, salary_type: emp.salaryType || 'weekly' }, `?id=eq.${emp.id}`),
-  deleteEmployee:  id      => q('DELETE', 'employees', null, `?id=eq.${id}`),
+  employees: async () => {
+    const { data, error } = await supabase.from('employees').select('*').order('name')
+    if (error) throw error
+    return data
+  },
+  
+  weeklyEmps: async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .or('salary_type.eq.weekly,salary_type.is.null')
+      .order('name')
+    if (error) throw error
+    return data
+  },
+
+  monthlyEmps: async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('salary_type', 'monthly')
+      .order('name')
+    if (error) throw error
+    return data
+  },
+
+  saveEmployee: emp => supabase.from('employees').insert({
+    id: emp.id,
+    name: emp.name,
+    salary: emp.salary,
+    salary_type: emp.salaryType || 'weekly'
+  }),
+
+  updateEmployee: emp => supabase.from('employees').update({
+    name: emp.name,
+    salary: emp.salary,
+    salary_type: emp.salaryType || 'weekly'
+  }).eq('id', emp.id),
+
+  deleteEmployee: id => supabase.from('employees').delete().eq('id', id),
 
   // Weekly entries
-  weekly:          ()      => q('GET', 'weekly_entries', null, '?order=created_at.desc'),
-  weeklyByPeriod:  pid     => q('GET', 'weekly_entries', null, `?period_id=eq.${pid}&order=name`),
-  saveWeekly:      e       => q('POST', 'weekly_entries', {
+  weekly: async () => {
+    const { data, error } = await supabase.from('weekly_entries').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  saveWeekly: e => supabase.from('weekly_entries').insert({
     id: e.id, name: e.name, week_label: e.weekLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
     period_id: e.periodId || null
   }),
-  updateWeekly:    e       => q('PATCH', 'weekly_entries', {
+
+  updateWeekly: e => supabase.from('weekly_entries').update({
     name: e.name, week_label: e.weekLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-  }, `?id=eq.${e.id}`),
-  deleteWeekly:    id      => q('DELETE', 'weekly_entries', null, `?id=eq.${id}`),
+  }).eq('id', e.id),
+
+  deleteWeekly: id => supabase.from('weekly_entries').delete().eq('id', id),
 
   // Monthly entries
-  monthlyAll:      ()      => q('GET', 'monthly_entries', null, '?order=created_at.desc'),
-  monthlyByPeriod: pid     => q('GET', 'monthly_entries', null, `?period_id=eq.${pid}&order=name`),
-  saveMonthly:     e       => q('POST', 'monthly_entries', {
+  monthlyAll: async () => {
+    const { data, error } = await supabase.from('monthly_entries').select('*').order('created_at', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  saveMonthly: e => supabase.from('monthly_entries').insert({
     id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
     period_id: e.periodId || null
   }),
-  updateMonthly:   e       => q('PATCH', 'monthly_entries', {
+
+  updateMonthly: e => supabase.from('monthly_entries').update({
     name: e.name, month_label: e.monthLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-  }, `?id=eq.${e.id}`),
-  deleteMonthly:   id      => q('DELETE', 'monthly_entries', null, `?id=eq.${id}`),
+  }).eq('id', e.id),
+
+  deleteMonthly: id => supabase.from('monthly_entries').delete().eq('id', id),
 
   // Advances
-  advances:        ()      => q('GET', 'advances', null, '?order=date.desc'),
-  saveAdvance:     a       => q('POST', 'advances', { id: a.id, name: a.name, date: a.date || null, amount: a.amount, remarks: a.remarks || '' }),
-  deleteAdvance:   id      => q('DELETE', 'advances', null, `?id=eq.${id}`),
+  advances: async () => {
+    const { data, error } = await supabase.from('advances').select('*').order('date', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  saveAdvance: a => supabase.from('advances').insert({
+    id: a.id, name: a.name, date: a.date || null, amount: a.amount, remarks: a.remarks || ''
+  }),
+
+  deleteAdvance: id => supabase.from('advances').delete().eq('id', id),
 
   // Shortages
-  shortages:       ()      => q('GET', 'shortages', null, '?order=date.desc'),
-  saveShortage:    s       => q('POST', 'shortages', { id: s.id, name: s.name, date: s.date || null, amount: s.amount, remarks: s.remarks || '' }),
-  deleteShortage:  id      => q('DELETE', 'shortages', null, `?id=eq.${id}`),
+  shortages: async () => {
+    const { data, error } = await supabase.from('shortages').select('*').order('date', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  saveShortage: s => supabase.from('shortages').insert({
+    id: s.id, name: s.name, date: s.date || null, amount: s.amount, remarks: s.remarks || ''
+  }),
+
+  deleteShortage: id => supabase.from('shortages').delete().eq('id', id),
 
   // Bank
-  bank:            ()      => q('GET', 'bank_accounts', null, '?order=name'),
-  upsertBank:      b       => {
-    const headers2 = { ...H, 'Prefer': 'resolution=merge-duplicates,return=representation' }
-    return fetch(`${SUPA_URL}/rest/v1/bank_accounts`, { method: 'POST', headers: headers2, body: JSON.stringify(b) })
+  bank: async () => {
+    const { data, error } = await supabase.from('bank_accounts').select('*').order('name')
+    if (error) throw error
+    return data
   },
-  deleteBank:      name    => q('DELETE', 'bank_accounts', null, `?name=eq.${encodeURIComponent(name)}`),
+
+  upsertBank: b => supabase.from('bank_accounts').upsert(b),
+  deleteBank: name => supabase.from('bank_accounts').delete().eq('name', name),
 
   // Settings
-  getSetting:      async key => { const r = await q('GET', 'settings', null, `?key=eq.${key}`); return r[0]?.value ?? null },
-  setSetting:      (key, value) => {
-    const headers2 = { ...H, 'Prefer': 'resolution=merge-duplicates,return=representation' }
-    return fetch(`${SUPA_URL}/rest/v1/settings`, { method: 'POST', headers: headers2, body: JSON.stringify({ key, value: String(value) }) })
+  getSetting: async key => {
+    const { data, error } = await supabase.from('settings').select('value').eq('key', key).single()
+    if (error && error.code !== 'PGRST116') throw error // PGRST116 is no rows returned
+    return data?.value ?? null
   },
-  getWorkingDays:  async ()    => { const v = await DB.getSetting('working_days'); return v ? Number(v) : 26 },
-  setWorkingDays:  n           => DB.setSetting('working_days', n),
 
-  // Weekly Payroll Periods
-  periods:         ()      => q('GET', 'payroll_periods', null, '?order=date_from.desc'),
-  openPeriod:      async () => { const r = await q('GET', 'payroll_periods', null, '?status=eq.open&order=created_at.desc&limit=1'); return r[0] || null },
-  savePeriod:      p       => q('POST', 'payroll_periods', p),
-  closePeriod:     (id, total) => q('PATCH', 'payroll_periods', { status: 'closed', closed_at: new Date().toISOString(), total_payroll: total }, `?id=eq.${id}`),
-  reopenPeriod:    id      => q('PATCH', 'payroll_periods', { status: 'open', closed_at: null }, `?id=eq.${id}`),
+  setSetting: (key, value) => supabase.from('settings').upsert({ key, value: String(value) }),
+  getWorkingDays: async () => {
+    const v = await DB.getSetting('working_days')
+    return v ? Number(v) : 26
+  },
+  setWorkingDays: n => DB.setSetting('working_days', n),
 
-  // Monthly Payroll Periods
-  monthlyPeriods:       ()      => q('GET', 'monthly_periods', null, '?order=date_from.desc'),
-  openMonthlyPeriod:    async () => { const r = await q('GET', 'monthly_periods', null, '?status=eq.open&order=created_at.desc&limit=1'); return r[0] || null },
-  saveMonthlyPeriod:    p       => q('POST', 'monthly_periods', p),
-  closeMonthlyPeriod:   (id, total) => q('PATCH', 'monthly_periods', { status: 'closed', closed_at: new Date().toISOString(), total_payroll: total }, `?id=eq.${id}`),
-  reopenMonthlyPeriod:  id      => q('PATCH', 'monthly_periods', { status: 'open', closed_at: null }, `?id=eq.${id}`),
+  // Periods
+  periods: async () => {
+    const { data, error } = await supabase.from('payroll_periods').select('*').order('date_from', { ascending: false })
+    if (error) throw error
+    return data
+  },
 
-  // Computed helpers — Weekly
-  perDay:              (emp, wd)             => emp.salary / (wd || 26),
-  
-  // High-performance Map creators for O(1) lookups
+  openPeriod: async () => {
+    const { data, error } = await supabase
+      .from('payroll_periods')
+      .select('*')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data || null
+  },
+
+  savePeriod: p => supabase.from('payroll_periods').insert(p),
+  closePeriod: (id, total) => supabase.from('payroll_periods').update({
+    status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
+  }).eq('id', id),
+
+  monthlyPeriods: async () => {
+    const { data, error } = await supabase.from('monthly_periods').select('*').order('date_from', { ascending: false })
+    if (error) throw error
+    return data
+  },
+
+  openMonthlyPeriod: async () => {
+    const { data, error } = await supabase
+      .from('monthly_periods')
+      .select('*')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data || null
+  },
+
+  saveMonthlyPeriod: p => supabase.from('monthly_periods').insert(p),
+  closeMonthlyPeriod: (id, total) => supabase.from('monthly_periods').update({
+    status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
+  }).eq('id', id),
+
+  // ── High-performance Lookup Helpers ───────────────────────────────
   createEmpMap: (emps) => {
     const map = {}; emps.forEach(e => map[e.name] = e); return map;
   },
@@ -132,42 +218,47 @@ export const DB = {
     return map;
   },
 
-  totalAdvGiven:       (name, advances)      => advances.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
-  totalShrGiven:       (name, shortages)     => shortages.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
-  totalAdvDeducted:    (name, weekly)        => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.adv_deducted || 0), 0),
-  totalShrDeducted:    (name, weekly)        => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.shr_deducted || 0), 0),
-  
-  advPending:          (name, adv, wkly)     => DB.totalAdvGiven(name, adv) - DB.totalAdvDeducted(name, wkly),
-  shrPending:          (name, shr, wkly)     => DB.totalShrGiven(name, shr) - DB.totalShrDeducted(name, wkly),
-  
-  weekSalary:          (entry, emp, wd)      => {
-    if (!emp) return 0
-    const pd = DB.perDay(emp, wd)
-    const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
-    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
-  },
-
-  // Computed helpers — Monthly
-  totalAdvDeductedMonthly: (name, monthly)  => monthly.filter(m => m.name === name).reduce((s, m) => s + Number(m.adv_deducted || 0), 0),
-  totalShrDeductedMonthly: (name, monthly)  => monthly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0),
-  advPendingMonthly:       (name, adv, mly) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeductedMonthly(name, mly),
-  shrPendingMonthly:       (name, shr, mly) => DB.totalShrGiven(name, shr) - DB.totalShrDeductedMonthly(name, mly),
-  monthlySalary:           (entry, emp, wd)     => {
+  // ── Calculation Helpers ──────────────────────────────────────────
+  // Optimized versions should use Maps passed from components
+  weekSalary: (entry, emp, wd) => {
     if (!emp) return 0
     const pd = emp.salary / (wd || 26)
     const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
     return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
   },
 
-  // Auth (localStorage)
+  monthlySalary: (entry, emp, wd) => {
+    if (!emp) return 0
+    const pd = emp.salary / (wd || 26)
+    const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
+    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
+  },
+
+  // Legacy fallback (O(N^2), use sparingly)
+  totalAdvGiven: (name, advances) => advances.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
+  totalShrGiven: (name, shortages) => shortages.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
+  totalAdvDeducted: (name, weekly) => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.adv_deducted || 0), 0),
+  totalShrDeducted: (name, weekly) => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.shr_deducted || 0), 0),
+  advPending: (name, adv, wkly) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeducted(name, wkly),
+  shrPending: (name, shr, wkly) => DB.totalShrGiven(name, shr) - DB.totalShrDeducted(name, wkly),
+  advPendingMonthly: (name, adv, mly) => DB.totalAdvGiven(name, adv) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.adv_deducted || 0), 0)),
+  shrPendingMonthly: (name, shr, mly) => DB.totalShrGiven(name, shr) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0)),
+
+  // Auth (localStorage) — Still using local storage for now, but cleaned up
   AUTH_KEY: 'prl_auth_users',
-  getUsers: () => { try { const u = JSON.parse(localStorage.getItem('prl_auth_users')); if (u?.length) return u } catch {} return [{ username: 'admin', password: btoa('thulir123'), role: 'admin' }] },
+  getUsers: () => { 
+    try { 
+      const u = JSON.parse(localStorage.getItem('prl_auth_users'))
+      if (u?.length) return u 
+    } catch {} 
+    // Default admin user (Base64 is still used for backward compatibility during migration)
+    return [{ username: 'admin', password: btoa('thulir123'), role: 'admin' }] 
+  },
   saveUsers: u => localStorage.setItem('prl_auth_users', JSON.stringify(u)),
 
-  // Seed
   async seed() {
-    const existing = await DB.employees()
-    if (existing.length) return
+    const { data: existing } = await supabase.from('employees').select('id').limit(1)
+    if (existing?.length) return
     const names = [
       ["KRISHNAMOORTHI R",17500],["HARIKRISHNAN KUMAR",17500],["RAJU P",17000],
       ["NAGARAJ SHANMUGAM",18000],["DHATCHINAMOORTHI N",18000],["MANIKANDAN GOVINTHARAJ",17000],
@@ -179,8 +270,7 @@ export const DB = {
       ["SELVI THANGAMANI",17000],["SARANYA P",18000],["MATHI",18000],
       ["KEERTHANA S",20000],["SIVAPRASANTH GOVINDARAJ",16500],
     ]
-    for (const [name, salary] of names) {
-      await DB.saveEmployee({ id: uid(), name, salary, salaryType: 'weekly' })
-    }
+    const seedData = names.map(([name, salary]) => ({ id: uid(), name, salary, salary_type: 'weekly' }))
+    await supabase.from('employees').insert(seedData)
   }
 }

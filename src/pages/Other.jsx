@@ -378,20 +378,23 @@ export function ChangePassword() {
           <button className="btn btn-primary mt-16" onClick={changePw}>✅ Update Password</button>
         </Panel>
 
-        <Panel title="👥 Manage Users" headerColor="var(--blue)">
-          {users.map(u => (
-            <div key={u.username} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 8, background: 'var(--grey)', marginBottom: 8 }}>
-              <div>
-                <span style={{ fontWeight: 600, fontSize: 13 }}>👤 {u.username}</span>
-                <span className="badge badge-blue" style={{ marginLeft: 8 }}>{u.role || 'staff'}</span>
+        {sess.role === 'admin' && (
+          <Panel title="👥 Manage Users" headerColor="var(--blue)">
+            {users.map(u => (
+              <div key={u.username} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 8, background: 'var(--grey)', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>👤 {u.username}</span>
+                  <span className="badge badge-blue" style={{ marginLeft: 8 }}>{u.role || 'staff'}</span>
+                </div>
+                {u.username !== (sess.username || 'admin')
+                  ? <button className="btn btn-danger btn-sm" onClick={() => removeUser(u.username)}>🗑️ Remove</button>
+                  : <span style={{ fontSize: 11, color: 'var(--mid)' }}>Current user</span>}
               </div>
-              {u.username !== (sess.username || 'admin')
-                ? <button className="btn btn-danger btn-sm" onClick={() => removeUser(u.username)}>🗑️ Remove</button>
-                : <span style={{ fontSize: 11, color: 'var(--mid)' }}>Current user</span>}
-            </div>
-          ))}
-          <button className="btn btn-primary btn-sm" onClick={() => setNewUserForm(true)}>+ Add New User</button>
-        </Panel>
+            ))}
+            <button className="btn btn-primary btn-sm" onClick={() => setNewUserForm(true)}>+ Add New User</button>
+          </Panel>
+        )}
+
       </div>
 
       {newUserForm && (
