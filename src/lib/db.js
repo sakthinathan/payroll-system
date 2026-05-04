@@ -177,6 +177,8 @@ export const DB = {
     status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
   }).eq('id', id),
 
+  reopenPeriod: id => supabase.from('payroll_periods').update({ status: 'open', closed_at: null }).eq('id', id),
+
   monthlyPeriods: async () => {
     const { data, error } = await supabase.from('monthly_periods').select('*').order('date_from', { ascending: false })
     if (error) throw error
@@ -200,6 +202,8 @@ export const DB = {
     status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
   }).eq('id', id),
 
+  reopenMonthlyPeriod: id => supabase.from('monthly_periods').update({ status: 'open', closed_at: null }).eq('id', id),
+
   // ── High-performance Lookup Helpers ───────────────────────────────
   createEmpMap: (emps) => {
     const map = {}; emps.forEach(e => map[e.name] = e); return map;
@@ -219,6 +223,8 @@ export const DB = {
   },
 
   // ── Calculation Helpers ──────────────────────────────────────────
+  perDay: (emp, wd) => (emp?.salary || 0) / (wd || 26),
+
   // Optimized versions should use Maps passed from components
   weekSalary: (entry, emp, wd) => {
     if (!emp) return 0
