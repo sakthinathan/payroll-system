@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BRAND } from '../config/branding'
 import { 
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
@@ -67,8 +68,8 @@ export function Layout({ children, title }) {
         <div className="sidebar-logo">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h1>THULIR AGENCY</h1>
-              <span>Payroll v2.0</span>
+              <h1>{BRAND.name}</h1>
+              <span>{BRAND.tagline}</span>
             </div>
             <button className="mobile-only" onClick={() => setIsMenuOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.5 }}>
               <X size={24} />

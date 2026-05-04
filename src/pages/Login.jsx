@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BRAND } from '../config/branding'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 
 export default function Login() {
@@ -55,7 +56,7 @@ export default function Login() {
             transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
             className="login-logo-v2 glow-blue"
           >
-            <span style={{ fontSize: 42 }}>💼</span>
+            <span style={{ fontSize: 42 }}>{BRAND.logoEmoji}</span>
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0 }}
@@ -63,7 +64,7 @@ export default function Login() {
             transition={{ delay: 0.4 }}
             style={{ color: 'white', fontSize: 32, fontWeight: 800, letterSpacing: '-0.5px', marginBottom: 8 }}
           >
-            THULIR AGENCY
+            {BRAND.name}
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -71,7 +72,7 @@ export default function Login() {
             transition={{ delay: 0.5 }}
             style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, fontWeight: 500, letterSpacing: '0.5px' }}
           >
-            PAYROLL MANAGEMENT SYSTEM v2.0
+            {BRAND.tagline}
           </motion.p>
         </div>
 
@@ -164,7 +165,7 @@ export default function Login() {
           transition={{ delay: 1 }}
           style={{ textAlign: 'center', marginTop: 32, color: 'rgba(255, 255, 255, 0.3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}
         >
-          Perundurai Road, Erode · Secure Cloud Access
+          {BRAND.address} · {BRAND.footer}
         </motion.p>
       </motion.div>
     </div>
