@@ -15,12 +15,17 @@ export default function Ledger() {
 
   useEffect(() => {
     async function load() {
-      const [e, w, m, a, s, wdays] = await Promise.all([
-        DB.employees(), DB.weekly(), DB.monthlyAll(), DB.advances(), DB.shortages(), DB.getWorkingDays()
-      ])
-      setData({ emps: e, weekly: w, monthly: m, advances: a, shortages: s, wd: wdays })
-      if (e.length) setSelEmp(e[0].name)
-      setLoading(false)
+      try {
+        const [e, w, m, a, s, wdays] = await Promise.all([
+          DB.employees(), DB.weekly(), DB.monthlyAll().catch(() => []), DB.advances(), DB.shortages(), DB.getWorkingDays()
+        ])
+        setData({ emps: e, weekly: w, monthly: m, advances: a, shortages: s, wd: wdays })
+        if (e.length) setSelEmp(e[0].name)
+      } catch (err) {
+        console.error('Ledger load error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
