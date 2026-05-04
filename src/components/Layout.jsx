@@ -1,97 +1,126 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  LayoutDashboard, Users, CalendarDays, History, 
+  Wallet, AlertTriangle, Landmark, FileText, 
+  Download, Database, Key, LogOut, ChevronRight
+} from 'lucide-react'
 
-const NAV = [
-  { section: 'Overview', items: [
-    { to: '/', icon: '📊', label: 'Dashboard' }
-  ]},
-  { section: 'Master Data', items: [
-    { to: '/employees', icon: '👥', label: 'Employees' },
-    { to: '/bank', icon: '🏦', label: 'Bank Master' },
-  ]},
-  { section: 'Transactions', items: [
-    { to: '/periods', icon: '📆', label: 'Payroll Periods' },
-    { to: '/weekly', icon: '📅', label: 'Weekly Entry' },
-    { to: '/monthly-periods', icon: '🗓️', label: 'Monthly Periods' },
-    { to: '/monthly', icon: '🟣', label: 'Monthly Entry' },
-    { to: '/advances', icon: '💰', label: 'Advance Log' },
-    { to: '/shortages', icon: '⚠️', label: 'Shortage Log' },
-  ]},
-  { section: 'Reports', items: [
-    { to: '/ledger', icon: '📜', label: 'History' },
-    { to: '/deductions', icon: '📋', label: 'Deduction Master' },
-    { to: '/payslip', icon: '🧾', label: 'Payslip' },
-  ]},
-  { section: 'Downloads', items: [
-    { to: '/downloads', icon: '📥', label: 'Downloads' },
-  ]},
-  { section: 'Data', items: [
-    { to: '/backup', icon: '💾', label: 'Backup & Export' },
-    { to: '/changepw', icon: '🔑', label: 'Change Password' },
-  ]},
-]
-
-export function Sidebar() {
-  return (
-    <aside id="sidebar">
-      <div className="sidebar-logo">
-        <h1>💼 Thulir Agency</h1>
-        <span>Payroll Management · Cloud</span>
-      </div>
-      {NAV.map(({ section, items }) => (
-        <div key={section}>
-          <div className="nav-section">{section}</div>
-          <nav>
-            {items.map(({ to, icon, label }) => (
-              <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => isActive ? 'active' : ''}>
-                <span className="icon">{icon}</span> {label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-      ))}
-      <div className="sidebar-footer">
-        ☁️ Data stored in Supabase cloud<br />
-        <span style={{ color: 'rgba(255,255,255,.5)' }}>v2.0 React · Thulir Agency</span>
-      </div>
-    </aside>
-  )
-}
-
-export function Topbar({ title }) {
+export function Layout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const location = useLocation()
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
-  return (
-    <div id="topbar">
-      <h2 id="pageTitle">{title}</h2>
-      <div className="flex-gap">
-        <div className="meta">{today}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 16, paddingLeft: 16, borderLeft: '1px solid #e2e8f0' }}>
-          <span style={{ fontSize: 11, background: '#e2efda', color: '#375623', padding: '3px 8px', borderRadius: 20, fontWeight: 600 }}>☁️ Cloud</span>
-          <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>👤 {user?.email}</span>
-          <button onClick={() => navigate('/changepw')}
-            style={{ background: 'var(--grey)', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>
-            🔑
-          </button>
-          <button onClick={logout}
-            style={{ background: '#fee2e2', color: 'var(--red)', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font)' }}>
-            ⬅️ Logout
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+  const navItems = [
+    { section: 'Overview', items: [
+      { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    ]},
+    { section: 'Personnel', items: [
+      { path: '/employees', label: 'Employees', icon: <Users size={18} /> },
+      { path: '/bank', label: 'Bank Master', icon: <Landmark size={18} /> },
+    ]},
+    { section: 'Payroll Entry', items: [
+      { path: '/weekly', label: 'Weekly Entry', icon: <CalendarDays size={18} /> },
+      { path: '/monthly', label: 'Monthly Entry', icon: <CalendarDays size={18} /> },
+    ]},
+    { section: 'Deductions', items: [
+      { path: '/advances', label: 'Advance Log', icon: <Wallet size={18} /> },
+      { path: '/shortages', label: 'Shortage Log', icon: <AlertTriangle size={18} /> },
+      { path: '/deductions', label: 'Deduction Master', icon: <FileText size={18} /> },
+    ]},
+    { section: 'Records', items: [
+      { path: '/periods', label: 'Weekly History', icon: <History size={18} /> },
+      { path: '/monthly-periods', label: 'Monthly History', icon: <History size={18} /> },
+      { path: '/ledger', label: 'Ledger', icon: <FileText size={18} /> },
+    ]},
+    { section: 'Reports', items: [
+      { path: '/payslip', label: 'Payslip Generator', icon: <FileText size={18} /> },
+      { path: '/downloads', label: 'Downloads', icon: <Download size={18} /> },
+    ]},
+    { section: 'System', items: [
+      { path: '/backup', label: 'Backup & Export', icon: <Database size={18} /> },
+      { path: '/changepw', label: 'Change Password', icon: <Key size={18} /> },
+    ]}
+  ]
 
-export function Layout({ title, children }) {
   return (
     <div id="app">
-      <Sidebar />
+      <div className="app-bg" />
+      
+      <aside id="sidebar">
+        <div className="sidebar-logo">
+          <h1>THULIR AGENCY</h1>
+          <span>Payroll Management v2.0</span>
+        </div>
+
+        <nav style={{ paddingBottom: 40 }}>
+          {navItems.map(sec => (
+            <div key={sec.section}>
+              <div className="nav-section">{sec.section}</div>
+              {sec.items.map(item => (
+                <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
+                  <span className="icon">{item.icon}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {location.pathname === item.path && (
+                    <motion.div layoutId="active-pill" style={{ position: 'absolute', right: 8, width: 4, height: 16, background: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          ))}
+          
+          <div style={{ marginTop: 24, padding: '0 16px' }}>
+            <button onClick={logout} className="btn" style={{ width: '100%', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', border: 'none', justifyContent: 'flex-start', padding: '12px 20px' }}>
+              <LogOut size={18} />
+              <span style={{ fontWeight: 700, marginLeft: 12 }}>Logout</span>
+            </button>
+          </div>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+            <span style={{ opacity: 0.8 }}>Supabase Cloud Connected</span>
+          </div>
+          &copy; 2026 Thulir Agency
+        </div>
+      </aside>
+
       <main id="main">
-        <Topbar title={title} />
-        <div id="content">{children}</div>
+        <header id="topbar">
+          <div>
+            <h2>{title}</h2>
+            <div className="meta">{today}</div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>{user?.email?.split('@')[0]}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--blue)', textTransform: 'capitalize' }}>Administrator</div>
+            </div>
+            <div 
+              style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--navy)', color: '#fff', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}
+              onClick={() => navigate('/changepw')}
+            >
+              <div style={{ margin: 'auto' }}>{user?.email?.[0].toUpperCase()}</div>
+            </div>
+          </div>
+        </header>
+
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            id="content"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   )
