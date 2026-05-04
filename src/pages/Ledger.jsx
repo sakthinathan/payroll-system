@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { DB, fmt, fmtDate } from '../lib/db'
 import { Layout } from '../components/Layout'
-import { Panel, Spinner, KpiCard } from '../components/UI'
+import { Panel, Spinner } from '../components/UI'
+import { motion } from 'framer-motion'
+import { 
+  History, Wallet, TrendingDown, 
+  Search, User, CreditCard, ArrowUpRight 
+} from 'lucide-react'
 
 export default function Ledger() {
   const [loading, setLoading] = useState(true)
@@ -47,40 +52,94 @@ export default function Ledger() {
     return { emp, totalAdvGiven, totalShrGiven, totalAdvDed, totalShrDed, history }
   }, [selEmp, data, loading])
 
-  if (loading) return <Layout title="📜 Employee Ledger"><Spinner /></Layout>
+  if (loading) return <Layout title="Employee Ledger"><Spinner /></Layout>
 
   return (
-    <Layout title="📜 Employee History & Ledger">
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, alignItems: 'start' }}>
+    <Layout title="Staff Financial Ledger">
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 32, alignItems: 'start' }}>
         
         {/* Sidebar Selector */}
-        <Panel title="Select Employee">
-          <div className="form-group">
-            <label>Employee Name</label>
-            <select value={selEmp} onChange={e => setSelEmp(e.target.value)}>
-              {data.emps.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
-            </select>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <Panel title="Profile Selection">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginLeft: 4 }}>Select Staff Member</label>
+              <div style={{ position: 'relative' }}>
+                <User size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
+                <select 
+                  value={selEmp} 
+                  onChange={e => setSelEmp(e.target.value)}
+                  style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontSize: 14, fontWeight: 700, appearance: 'none' }}
+                >
+                  {data.emps.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {stats && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ marginTop: 24, padding: 24, background: 'linear-gradient(135deg, var(--navy), var(--slate))', borderRadius: 20, color: '#fff' }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.6, marginBottom: 4 }}>Contracted Salary</div>
+                <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1 }}>{fmt(stats.emp.salary)}</div>
+                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{stats.emp.salary_type === 'monthly' ? '🗓️ Monthly' : '📅 Weekly'} Payout</div>
+              </motion.div>
+            )}
+          </Panel>
+
           {stats && (
-            <div style={{ marginTop: 20, padding: 16, background: 'var(--grey)', borderRadius: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Standard Salary</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--navy)' }}>{fmt(stats.emp.salary)}</div>
-              <div style={{ fontSize: 12, color: 'var(--mid)', marginTop: 4 }}>{stats.emp.salary_type || 'Weekly'} worker</div>
+            <div style={{ background: 'var(--white)', borderRadius: 24, padding: '24px', boxShadow: 'var(--shadow-premium)' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CreditCard size={18} color="var(--blue)" /> Payment Summary
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { label: 'Adv. Deducted', val: stats.totalAdvDed, color: 'var(--emerald)' },
+                  { label: 'Shr. Deducted', val: stats.totalShrDed, color: 'var(--amber)' },
+                  { label: 'Net Transactions', val: stats.history.length, color: 'var(--indigo)' }
+                ].map(item => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: 'var(--slate)', fontWeight: 500 }}>{item.label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: item.color }}>{typeof item.val === 'number' && item.label.includes('Deducted') ? fmt(item.val) : item.val}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </Panel>
+        </div>
 
         {/* Main Ledger Content */}
         {stats ? (
-          <div>
-            <div className="kpi-grid" style={{ marginBottom: 24 }}>
-              <KpiCard label="Total Advance Given" value={fmt(stats.totalAdvGiven)} sub="Total from day one" icon="💸" color="blue" />
-              <KpiCard label="Advance Deducted" value={fmt(stats.totalAdvDed)} sub="Recovered so far" icon="📥" color="green" />
-              <KpiCard label="Advance Pending" value={fmt(stats.totalAdvGiven - stats.totalAdvDed)} sub="Balance to recover" icon="⏳" color="red" />
-              <KpiCard label="Shortage Pending" value={fmt(stats.totalShrGiven - stats.totalShrDed)} sub="Balance to recover" icon="⚠️" color="orange" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="kpi-grid">
+              <div className="kpi-card">
+                <div className="kpi-icon" style={{ color: 'var(--blue)' }}><Wallet /></div>
+                <div className="kpi-label">Total Advance</div>
+                <div className="kpi-value">{fmt(stats.totalAdvGiven)}</div>
+                <div className="kpi-sub">Life-time disbursements</div>
+              </div>
+              <div className="kpi-card green">
+                <div className="kpi-icon" style={{ color: 'var(--emerald)' }}><ArrowUpRight /></div>
+                <div className="kpi-label">Recovered</div>
+                <div className="kpi-value">{fmt(stats.totalAdvDed)}</div>
+                <div className="kpi-sub">Successful deductions</div>
+              </div>
+              <div className="kpi-card red">
+                <div className="kpi-icon" style={{ color: 'var(--rose)' }}><TrendingDown /></div>
+                <div className="kpi-label">Pending Recovery</div>
+                <div className="kpi-value">{fmt(stats.totalAdvGiven - stats.totalAdvDed)}</div>
+                <div className="kpi-sub">Current staff liability</div>
+              </div>
+              <div className="kpi-card orange">
+                <div className="kpi-icon" style={{ color: 'var(--amber)' }}><AlertTriangle /></div>
+                <div className="kpi-label">Shortage Balance</div>
+                <div className="kpi-value">{fmt(stats.totalShrGiven - stats.totalShrDed)}</div>
+                <div className="kpi-sub">Stock mismatch value</div>
+              </div>
             </div>
 
-            <Panel title={`Transaction History for ${selEmp}`} noPad>
+            <Panel title={`Transaction History: ${selEmp}`} subtitle="Comprehensive audit trail of all payments and deductions" noPad>
               <div className="tbl-wrap">
                 <table>
                   <thead>
@@ -88,40 +147,53 @@ export default function Ledger() {
                       <th>Date</th>
                       <th>Type</th>
                       <th>Reference</th>
-                      <th className="amt">Days/Lvs</th>
-                      <th className="amt">Deductions</th>
-                      <th className="amt">Net Amount</th>
+                      <th style={{ textAlign: 'center' }}>Activity</th>
+                      <th>Deductions</th>
+                      <th style={{ textAlign: 'right' }}>Net Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stats.history.length ? stats.history.map((h, i) => (
-                      <tr key={i}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(h.date)}</td>
+                      <motion.tr 
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                      >
+                        <td style={{ whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>{fmtDate(h.date)}</td>
                         <td>
-                          <span className={`badge ${h.type.includes('Salary') ? 'badge-green' : 'badge-blue'}`}>
+                          <span className={`badge ${h.type.includes('Salary') ? 'badge-blue' : 'badge-green'}`}>
                             {h.type}
                           </span>
                         </td>
-                        <td><span style={{ fontSize: 13, fontWeight: 500 }}>{h.label}</span> {h.remarks && <div style={{ fontSize: 10, color: 'var(--mid)' }}>{h.remarks}</div>}</td>
-                        <td className="amt">
+                        <td>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{h.label}</div>
+                          {h.remarks && <div style={{ fontSize: 11, color: 'var(--slate)', opacity: 0.6 }}>{h.remarks}</div>}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
                           {h.days !== undefined ? (
-                            <span style={{ fontSize: 12 }}>{h.days}d / {h.leaves}l</span>
-                          ) : '—'}
+                            <span className="badge badge-blue" style={{ fontSize: 11 }}>{h.days}d / {h.leaves}l</span>
+                          ) : <span style={{ opacity: 0.2 }}>—</span>}
                         </td>
-                        <td className="amt">
-                          {h.adv !== undefined ? (
-                            <div style={{ fontSize: 11 }}>
-                              {h.adv > 0 && <div style={{ color: 'var(--red)' }}>Adv: -{fmt(h.adv)}</div>}
-                              {h.shr > 0 && <div style={{ color: 'var(--red)' }}>Shr: -{fmt(h.shr)}</div>}
+                        <td>
+                          {h.adv !== undefined && (h.adv > 0 || h.shr > 0) ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {h.adv > 0 && <div className="amt-red" style={{ fontSize: 11 }}>Adv: -{fmt(h.adv)}</div>}
+                              {h.shr > 0 && <div className="amt-red" style={{ fontSize: 11 }}>Shr: -{fmt(h.shr)}</div>}
                             </div>
-                          ) : '—'}
+                          ) : <span style={{ opacity: 0.2 }}>—</span>}
                         </td>
-                        <td className={`amt ${h.type.includes('Salary') ? 'amt-green' : 'amt-blue'}`} style={{ fontWeight: 700 }}>
-                          {fmt(h.amt)}
+                        <td style={{ textAlign: 'right' }}>
+                          <div className={h.type.includes('Salary') ? 'amt-green' : 'amt-blue'} style={{ fontWeight: 800, fontSize: 15 }}>
+                            {fmt(h.amt)}
+                          </div>
                         </td>
-                      </tr>
+                      </motion.tr>
                     )) : (
-                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--mid)' }}>No transaction history found</td></tr>
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: 80 }}>
+                        <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.2 }}>📜</div>
+                        <p style={{ color: 'var(--slate)', opacity: 0.5, fontWeight: 600 }}>No transaction history found for this staff member</p>
+                      </td></tr>
                     )}
                   </tbody>
                 </table>
@@ -129,8 +201,8 @@ export default function Ledger() {
             </Panel>
           </div>
         ) : (
-          <div className="empty-state">
-            <p>Select an employee to view their ledger</p>
+          <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--white)', borderRadius: 24, border: '2px dashed var(--border)' }}>
+            <p style={{ color: 'var(--slate)', opacity: 0.5, fontWeight: 600 }}>Select an employee from the sidebar to view their full financial ledger</p>
           </div>
         )}
       </div>
