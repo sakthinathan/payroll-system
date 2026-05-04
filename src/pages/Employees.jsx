@@ -92,7 +92,7 @@ export default function Employees() {
           </div>
           <input type="number" min={1} max={31} value={wdInput}
             onChange={e => setWdInput(Number(e.target.value))}
-            style={{ width: 64, height: 48, textAlign: 'center', fontSize: 20, fontWeight: 800, borderRadius: 12, border: 'none', background: '#fff', color: var(--navy) }} />
+            style={{ width: 64, height: 48, textAlign: 'center', fontSize: 20, fontWeight: 800, borderRadius: 12, border: 'none', background: '#fff', color: 'var(--navy)' }} />
           <button className="btn btn-blue" style={{ height: 48, padding: '0 24px' }} onClick={saveWD}>Apply</button>
         </div>
       </div>

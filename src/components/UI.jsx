@@ -73,7 +73,7 @@ export function Confirm({ message, onConfirm, onClose }) {
         <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--navy)', marginBottom: 8 }}>Are you sure?</h3>
         <p style={{ color: 'var(--slate)', opacity: 0.6, fontSize: 14, marginBottom: 32 }}>{message}</p>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn" style={{ flex: 1, background: '#f1f5f9', border: 'none', color: var(--slate) }} onClick={onClose}>Cancel</button>
+          <button className="btn" style={{ flex: 1, background: '#f1f5f9', border: 'none', color: 'var(--slate)' }} onClick={onClose}>Cancel</button>
           <button className="btn btn-danger" style={{ flex: 1 }} onClick={onConfirm}>Yes, Delete</button>
         </div>
       </motion.div>
