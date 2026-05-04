@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { DB, fmt, fmtDate, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
+import { supabase } from '../lib/db'
 
 export function Advances() {
   const [advances, setAdvances] = useState([])
@@ -329,88 +330,43 @@ export function Bank() {
 export function ChangePassword() {
   const [form, setForm] = useState({ cur: '', new: '', conf: '' })
   const [error, setError] = useState('')
-  const [newUserForm, setNewUserForm] = useState(false)
-  const [nuForm, setNuForm] = useState({ username: '', password: '', role: 'staff' })
-  const [users, setUsers] = useState(DB.getUsers())
-  const sess = (() => { try { return JSON.parse(sessionStorage.getItem('prl_session')) || {} } catch { return {} } })()
+  const [updating, setUpdating] = useState(false)
 
-  const changePw = () => {
+  const changePw = async () => {
     setError('')
-    const allUsers = DB.getUsers()
-    const me = allUsers.find(u => u.username === (sess.username || 'admin'))
-    if (!me || me.password !== btoa(form.cur)) { setError('❌ Current password incorrect'); return }
     if (form.new.length < 6) { setError('❌ Min 6 characters'); return }
     if (form.new !== form.conf) { setError('❌ Passwords do not match'); return }
-    me.password = btoa(form.new)
-    DB.saveUsers(allUsers)
-    toast.success('Password changed ✅')
-    setForm({ cur: '', new: '', conf: '' })
-  }
+    
+    setUpdating(true)
+    const { error: supaErr } = await supabase.auth.updateUser({ password: form.new })
+    setUpdating(false)
 
-  const addUser = () => {
-    if (!nuForm.username) { toast.error('Username required'); return }
-    if (nuForm.password.length < 6) { toast.error('Min 6 chars'); return }
-    const allUsers = DB.getUsers()
-    if (allUsers.find(u => u.username === nuForm.username)) { toast.error('Username exists'); return }
-    allUsers.push({ username: nuForm.username, password: btoa(nuForm.password), role: nuForm.role })
-    DB.saveUsers(allUsers)
-    setUsers(DB.getUsers())
-    setNewUserForm(false)
-    toast.success(`User "${nuForm.username}" added ✅`)
-  }
-
-  const removeUser = name => {
-    DB.saveUsers(DB.getUsers().filter(u => u.username !== name))
-    setUsers(DB.getUsers())
-    toast.error(`User "${name}" removed`)
+    if (supaErr) {
+      setError(`❌ ${supaErr.message}`)
+    } else {
+      toast.success('Password updated successfully ✅')
+      setForm({ cur: '', new: '', conf: '' })
+    }
   }
 
   return (
     <Layout title="🔑 Change Password">
       <div style={{ maxWidth: 500, margin: '0 auto' }}>
-        <Panel title="🔑 Change Your Password" subtitle={`Logged in as: ${sess.username || 'admin'}`}>
+        <Panel title="🔑 Change Your Password" subtitle="Security settings">
           <div className="form-grid" style={{ gap: 16 }}>
-            <Field label="Current Password"><input type="password" value={form.cur} onChange={e => setForm(f => ({ ...f, cur: e.target.value }))} /></Field>
             <Field label="New Password"><input type="password" value={form.new} onChange={e => setForm(f => ({ ...f, new: e.target.value }))} placeholder="Min 6 characters" /></Field>
             <Field label="Confirm New Password"><input type="password" value={form.conf} onChange={e => setForm(f => ({ ...f, conf: e.target.value }))} /></Field>
           </div>
           {error && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{error}</div>}
-          <button className="btn btn-primary mt-16" onClick={changePw}>✅ Update Password</button>
+          <button className="btn btn-primary mt-16" onClick={changePw} disabled={updating}>
+            {updating ? 'Updating...' : '✅ Update Password'}
+          </button>
         </Panel>
-
-        {sess.role === 'admin' && (
-          <Panel title="👥 Manage Users" headerColor="var(--blue)">
-            {users.map(u => (
-              <div key={u.username} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 8, background: 'var(--grey)', marginBottom: 8 }}>
-                <div>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>👤 {u.username}</span>
-                  <span className="badge badge-blue" style={{ marginLeft: 8 }}>{u.role || 'staff'}</span>
-                </div>
-                {u.username !== (sess.username || 'admin')
-                  ? <button className="btn btn-danger btn-sm" onClick={() => removeUser(u.username)}>🗑️ Remove</button>
-                  : <span style={{ fontSize: 11, color: 'var(--mid)' }}>Current user</span>}
-              </div>
-            ))}
-            <button className="btn btn-primary btn-sm" onClick={() => setNewUserForm(true)}>+ Add New User</button>
-          </Panel>
-        )}
-
+        
+        <div style={{ background: 'var(--grey)', borderRadius: 10, padding: '14px 18px', fontSize: 12, color: 'var(--mid)', marginTop: 16 }}>
+          <strong style={{ color: 'var(--navy)' }}>💡 Note:</strong> User management (adding/removing staff) is now handled securely via the **Supabase Dashboard** to ensure maximum data protection.
+        </div>
       </div>
-
-      {newUserForm && (
-        <Modal title="Add New User" onClose={() => setNewUserForm(false)} onSave={async () => { addUser(); }}>
-          <div className="form-grid" style={{ gap: 14 }}>
-            <Field label="Username"><input value={nuForm.username} onChange={e => setNuForm(f => ({ ...f, username: e.target.value }))} placeholder="e.g. staff1" /></Field>
-            <Field label="Password"><input type="password" value={nuForm.password} onChange={e => setNuForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 chars" /></Field>
-            <Field label="Role">
-              <select value={nuForm.role} onChange={e => setNuForm(f => ({ ...f, role: e.target.value }))}>
-                <option value="admin">Admin</option>
-                <option value="staff">Staff</option>
-              </select>
-            </Field>
-          </div>
-        </Modal>
-      )}
     </Layout>
   )
 }

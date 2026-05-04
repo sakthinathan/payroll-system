@@ -244,18 +244,7 @@ export const DB = {
   advPendingMonthly: (name, adv, mly) => DB.totalAdvGiven(name, adv) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.adv_deducted || 0), 0)),
   shrPendingMonthly: (name, shr, mly) => DB.totalShrGiven(name, shr) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0)),
 
-  // Auth (localStorage) — Still using local storage for now, but cleaned up
-  AUTH_KEY: 'prl_auth_users',
-  getUsers: () => { 
-    try { 
-      const u = JSON.parse(localStorage.getItem('prl_auth_users'))
-      if (u?.length) return u 
-    } catch {} 
-    // Default admin user (Base64 is still used for backward compatibility during migration)
-    return [{ username: 'admin', password: btoa('thulir123'), role: 'admin' }] 
-  },
-  saveUsers: u => localStorage.setItem('prl_auth_users', JSON.stringify(u)),
-
+  // Seeding
   async seed() {
     const { data: existing } = await supabase.from('employees').select('id').limit(1)
     if (existing?.length) return
@@ -274,3 +263,4 @@ export const DB = {
     await supabase.from('employees').insert(seedData)
   }
 }
+

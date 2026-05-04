@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { DB } from '../lib/db'
+import { supabase } from './db'
 
 const AuthCtx = createContext(null)
 
@@ -8,27 +8,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const s = sessionStorage.getItem('prl_session')
-    if (s) { try { setUser(JSON.parse(s)) } catch {} }
-    setLoading(false)
+    // 1. Check for current session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // 2. Listen for auth changes (login, logout, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = (username, password) => {
-    const users = DB.getUsers()
-    const found = users.find(u => u.username === username.toLowerCase() && u.password === btoa(password))
-    if (!found) return false
-    const sess = { loggedIn: true, username: found.username, role: found.role, loginTime: new Date().toISOString() }
-    sessionStorage.setItem('prl_session', JSON.stringify(sess))
-    setUser(sess)
-    return true
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
   }
 
-  const logout = () => {
-    sessionStorage.removeItem('prl_session')
-    setUser(null)
+  const logout = async () => {
+    await supabase.auth.signOut()
   }
 
-  return <AuthCtx.Provider value={{ user, login, logout, loading }}>{children}</AuthCtx.Provider>
+  return (
+    <AuthCtx.Provider value={{ user, login, logout, loading }}>
+      {children}
+    </AuthCtx.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthCtx)

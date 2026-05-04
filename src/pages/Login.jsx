@@ -15,18 +15,18 @@ export default function Login() {
   const doLogin = async () => {
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 500))
-    const ok = login(username, password)
-    if (ok) {
+    try {
+      await login(username, password)
       navigate('/')
-    } else {
+    } catch (err) {
       setLoading(false)
-      setError('❌ Incorrect username or password')
+      setError(`❌ ${err.message || 'Invalid email or password'}`)
       setShake(true)
       setTimeout(() => setShake(false), 400)
       setPassword('')
     }
   }
+
 
   const handleKey = e => { if (e.key === 'Enter') doLogin() }
 
@@ -44,20 +44,21 @@ export default function Login() {
           <div className="card-sub">Sign in to access the Payroll System</div>
 
           <div className="login-field">
-            <label>Username</label>
+            <label>Email Address</label>
             <div className="login-input-wrap">
-              <span className="login-icon">👤</span>
+              <span className="login-icon">📧</span>
               <input
-                type="text"
+                type="email"
                 className="login-input"
-                placeholder="Enter username"
+                placeholder="Enter email"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && document.getElementById('pwInput').focus()}
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
           </div>
+
 
           <div className="login-field">
             <label>Password</label>

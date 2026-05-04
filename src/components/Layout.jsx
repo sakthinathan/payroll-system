@@ -70,7 +70,7 @@ export function Topbar({ title }) {
         <div className="meta">{today}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 16, paddingLeft: 16, borderLeft: '1px solid #e2e8f0' }}>
           <span style={{ fontSize: 11, background: '#e2efda', color: '#375623', padding: '3px 8px', borderRadius: 20, fontWeight: 600 }}>☁️ Cloud</span>
-          <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>👤 {user?.username}</span>
+          <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>👤 {user?.email}</span>
           <button onClick={() => navigate('/changepw')}
             style={{ background: 'var(--grey)', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' }}>
             🔑
