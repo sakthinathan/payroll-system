@@ -371,7 +371,7 @@ export function Weekly() {
 
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <Panel title="Initialize New Period" subtitle="Begin weekly payroll processing">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="form-grid cols2" style={{ marginBottom: 24 }}>
               <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
               <Field label="Week Number">
                 <select className="form-input" value={newPeriod.weekNum} onChange={e => setNewPeriod(p => ({ ...p, weekNum:Number(e.target.value) }))}>
@@ -447,7 +447,7 @@ export function Weekly() {
 
       {bulkModal && (
         <Modal title="⚡ Bulk Attendance Entry" onClose={() => setBulkModal(false)} onSave={bulkAdd} saveLabel={`Apply to ${pendingEmps.length} Employees`}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="form-grid cols2">
             <Field label="Standard Days"><input type="number" className="form-input" value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
             <Field label="Standard Leaves"><input type="number" className="form-input" value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
           </div>

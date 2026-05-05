@@ -197,7 +197,7 @@ export function Deductions() {
       <div style={{ background: 'var(--yellow)', borderRadius: 10, padding: '12px 18px', marginBottom: 18, fontSize: 13 }}>
         📌 Fully automatic — calculated from Advance Log, Shortage Log and Weekly Entry.
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="dashboard-main-grid">
         <Panel title="💰 Advance Summary" noPad>
           <div className="tbl-wrap">            <table>
               <thead><tr><th>Employee</th><th>Given</th><th>Deducted</th><th>Pending</th></tr></thead>

@@ -99,7 +99,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+      <div className="dashboard-main-grid">
         <Panel title="Latest Weekly Activity" subtitle="Real-time payroll tracking">
           <div className="tbl-wrap">
             <table>

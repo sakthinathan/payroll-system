@@ -219,7 +219,7 @@ export default function Employees() {
                 <CreditCard size={18} />
                 <h4 style={{ fontSize: 14, fontWeight: 800 }}>PAYROLL INFORMATION</h4>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="form-grid cols2">
                 <Field label="Employee ID">
                   <input value={form.empId} readOnly className="form-input" style={{ background: 'var(--bg)', opacity: 0.7 }} />
                 </Field>
@@ -230,7 +230,7 @@ export default function Employees() {
                   </select>
                 </Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+              <div className="form-grid cols2" style={{ marginTop: 20 }}>
                 <Field label="Full Name">
                   <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="CAPS" className="form-input" />
                 </Field>
@@ -245,7 +245,7 @@ export default function Employees() {
                 <Contact size={18} />
                 <h4 style={{ fontSize: 14, fontWeight: 800 }}>PERSONAL DETAILS</h4>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="form-grid cols2">
                 <Field label="National Identity (Aadhaar/PAN)">
                   <input value={form.identityNo} onChange={e => setForm(f => ({ ...f, identityNo: e.target.value }))} className="form-input" />
                 </Field>
@@ -253,7 +253,7 @@ export default function Employees() {
                   <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="form-input" />
                 </Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+              <div className="form-grid cols2" style={{ marginTop: 20 }}>
                 <Field label="Date of Joining">
                   <input type="date" value={form.joiningDate} onChange={e => setForm(f => ({ ...f, joiningDate: e.target.value }))} className="form-input" />
                 </Field>
