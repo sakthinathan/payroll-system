@@ -105,14 +105,14 @@ export function Layout({ children, title }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div className="desktop-only" style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user?.email?.split('@')[0]}</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.4)' }}>Zylker Corp</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>System Administrator</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{BRAND.name}</div>
             </div>
             <div 
-              style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
+              style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, cursor: 'pointer', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               onClick={() => navigate('/changepw')}
             >
-              {user?.email?.[0].toUpperCase()}
+              {user?.email?.[0].toUpperCase() || 'A'}
             </div>
             <button className="mobile-only btn" style={{ padding: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => setIsMenuOpen(true)}>
               <Menu size={20} />
