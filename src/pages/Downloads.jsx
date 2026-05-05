@@ -1,7 +1,13 @@
+import { useState, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
+import { DB, fmt } from '../lib/db'
+import { Layout } from '../components/Layout'
 import { Panel, Spinner } from '../components/UI'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
 import { BRAND } from '../config/branding'
+import { Search, Zap, Lock, History, Download, Printer, FileText, Landmark } from 'lucide-react'
+import { uid } from '../lib/db'
 
 // ── REMITTER DETAILS ──────────────────────────────────────────────
 const REMITTER_ACC   = '33284893641'
