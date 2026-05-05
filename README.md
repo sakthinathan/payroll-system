@@ -1,63 +1,94 @@
-# 💼 Thulir Agency — Payroll System (React)
+# ❄️ Midnight Frost — Enterprise Payroll System
 
-A full-featured payroll management system built with React + Vite + Supabase.
+A premium, white-label payroll management platform engineered for speed, security, and high-fidelity user experience. Built with **React 18**, **Vite**, **Supabase**, and **Framer Motion**.
 
-## Tech Stack
-- **React 18** with React Router v6
-- **Vite** for fast builds
-- **Supabase** cloud database
-- **react-hot-toast** for notifications
-- **lucide-react** for icons
-- **GitHub Pages** for hosting
+![Version](https://img.shields.io/badge/version-2.0.0-blue?style=for-the-badge)
+![UI](https://img.shields.io/badge/UI-Midnight_Frost-6366f1?style=for-the-badge)
+![Responsiveness](https://img.shields.io/badge/Mobile-Optimized-10b981?style=for-the-badge)
 
-## Features
-- 🔐 Login / Logout with session management
-- 📊 Dashboard with KPI cards
-- 👥 Employee Master with working days setting
-- 📆 Payroll Periods — start, close, reopen
-- 📅 Weekly Entry with bulk add
-- 💰 Advance & Shortage tracking
-- 📋 Deduction Master (auto summary)
-- 🏦 Bank Master with WhatsApp integration
-- 🧾 Payslip Generator with WhatsApp share
-- 💾 Backup & Restore
+---
 
-## Local Development
+## ✨ Features
 
+### 💎 Premium Design & UX
+- **Midnight Frost UI**: High-fidelity glassmorphism aesthetic with fluid typography.
+- **Mobile Responsive**: Fully adaptive layout with a native-style mobile drawer.
+- **Micro-Animations**: Smooth state transitions powered by Framer Motion.
+- **Fluid Scaling**: Robust `clamp()` based scaling for perfect zoom on all devices.
+
+### 🏢 White-Label Ready
+- **Centralized Branding**: Change company name, logo, address, and theme colors in one single config file (`branding.js`).
+- **Generic Architecture**: Decoupled branding from core business logic for multi-tenant deployment.
+
+### 📊 Payroll Core
+- **Dual Stream Payroll**: Seamlessly manage both **Weekly** and **Monthly** employee types.
+- **O(1) Performance**: High-performance map-based database lookups for instant calculations.
+- **Financial Ledger**: Full financial history for every staff member including advances, shortages, and recoveries.
+- **Bulk Operations**: Intelligent batch entry for weekly hours and leaves.
+
+### 🔐 Security & Integration
+- **Supabase Auth**: Secure authentication with Row Level Security (RLS).
+- **WhatsApp Integration**: Share payslips and bank lists directly via WhatsApp.
+- **Cloud Backup**: Export and restore system state with one click.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Installation
 ```bash
+git clone https://github.com/sakthinathan/payroll-system.git
+cd payroll-system
 npm install
+```
+
+### 2. Environment Setup
+Create a `.env` file in the root:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_key
+```
+
+### 3. Local Development
+```bash
 npm run dev
 ```
 
-Visit `http://localhost:5173/payroll-system/`
+---
 
-## Deploy to GitHub Pages
+## 🎨 White-Labeling Guide
 
-### Option 1 — Automatic (GitHub Actions)
-1. Push code to your GitHub repo
-2. Go to **Settings → Pages → Source: GitHub Actions**
-3. Every push to `main` will auto-deploy!
+To rebrand this application for a new client, navigate to `src/config/branding.js` and update the configuration object:
 
-### Option 2 — Manual Build
-```bash
-npm run build
-# Upload the `dist` folder contents to your repo
+```javascript
+export const BRAND = {
+  name: "YOUR CLIENT NAME",
+  tagline: "Custom Payroll Suite",
+  address: "City, Country",
+  logoEmoji: "💼",
+  // ...
+};
 ```
 
-## Configuration
+---
 
-Edit `vite.config.js` to match your repo name:
-```js
-base: '/your-repo-name/'
-```
+## 📱 Mobile & Tablet
+This application is fully responsive. For the best experience on mobile:
+- **Navigation**: Access the hamburger menu in the top-left corner.
+- **Tables**: Horizontal scroll is enabled for wide data views.
+- **Inputs**: All fields are touch-optimized for fast entry.
 
-Edit `src/App.jsx` basename:
-```jsx
-<BrowserRouter basename="/your-repo-name">
-```
+---
 
-## Default Login
-- Username: `admin`
-- Password: `thulir123`
+## 🛠️ Tech Stack
+- **Framework**: React 18 (Vite)
+- **Database**: Supabase (PostgreSQL)
+- **Styling**: Vanilla CSS (Modern CSS Variables + Clamp)
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Hosting**: GitHub Pages
 
-Change after first login in **🔑 Change Password**
+---
+
+## 📄 License
+Custom Enterprise License — &copy; 2026 Thulir Agency
