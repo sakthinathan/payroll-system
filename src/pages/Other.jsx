@@ -76,6 +76,7 @@ export function Advances() {
         </div>
       </Panel>
 
+      {modal && (
         <Modal title="Record New Advance" onClose={() => setModal(false)} onSave={save}>
           <div className="form-grid cols2">
             <Field label="Date"><input type="date" className="form-input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
@@ -88,6 +89,7 @@ export function Advances() {
             <Field label="Remarks"><input className="form-input" value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Medical" /></Field>
           </div>
         </Modal>
+      )}
       {confirm && <Confirm message="Delete this advance?" onConfirm={() => del(confirm)} onClose={() => setConfirm(null)} />}
     </Layout>
   )
@@ -160,6 +162,7 @@ export function Shortages() {
         </div>
       </Panel>
 
+      {modal && (
         <Modal title="Record Shortage" onClose={() => setModal(false)} onSave={save}>
           <div className="form-grid cols2">
             <Field label="Date"><input type="date" className="form-input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
@@ -172,6 +175,7 @@ export function Shortages() {
             <Field label="Remarks"><input className="form-input" value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Material damage" /></Field>
           </div>
         </Modal>
+      )}
       {confirm && <Confirm message="Delete this shortage?" onConfirm={() => del(confirm)} onClose={() => setConfirm(null)} />}
     </Layout>
   )
@@ -299,6 +303,7 @@ export function Bank() {
         </div>
       </Panel>
 
+      {modal && (
         <Modal title={modal === 'add' ? 'Add Bank Account' : 'Edit Bank Account'} onClose={() => setModal(null)} onSave={save}>
           <div className="form-grid cols2">
             <Field label="Employee" style={{ gridColumn: '1/-1' }}>
@@ -315,6 +320,7 @@ export function Bank() {
             </Field>
           </div>
         </Modal>
+      )}
       {confirm && <Confirm message={`Delete bank record for ${confirm}?`} onConfirm={() => del(confirm)} onClose={() => setConfirm(null)} />}
     </Layout>
   )
