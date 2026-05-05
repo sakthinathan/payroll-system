@@ -92,53 +92,53 @@ export default function Employees() {
 
   return (
     <Layout title="Staff Directory">
-      {/* Modern Working Days Control */}
-      <div style={{ background: 'linear-gradient(135deg, var(--navy), var(--indigo))', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, boxShadow: 'var(--shadow-premium)', position: 'relative', overflow: 'hidden' }}>
-        <Calendar style={{ position: 'absolute', right: -20, bottom: -20, size: 140, opacity: 0.05, color: '#fff' }} />
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>Payroll Settings</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontSize: 48, fontWeight: 800, color: '#fff', letterSpacing: -2 }}>{wd}</span>
-            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 16, fontWeight: 500 }}>Active Working Days</span>
+      {/* Modern Working Days Control (Zoho Style) */}
+      <Panel title="Payroll Configuration" subtitle="Global working days setting for rate calculation">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ background: 'var(--blue-light)', color: 'var(--blue)', width: 64, height: 64, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Calendar size={32} />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--slate)', opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1 }}>Current Period</div>
+              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--navy)', letterSpacing: -1 }}>{wd} Working Days</div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--grey)', padding: '12px 16px', borderRadius: 16, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--slate)' }}>Change to:</span>
+            <input type="number" min={1} max={31} value={wdInput}
+              onChange={e => setWdInput(Number(e.target.value))}
+              className="form-input"
+              style={{ width: 80, height: 40, textAlign: 'center', borderRadius: 10 }} />
+            <button className="btn btn-blue" style={{ height: 40, padding: '0 20px', borderRadius: 10 }} onClick={async () => {
+              await DB.setWorkingDays(wdInput)
+              setWd(wdInput)
+              toast.success(`Working days updated to ${wdInput}`)
+            }}>Update</button>
           </div>
         </div>
-        
-        <div style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', padding: '24px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 16, border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Update Period</div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Calculates per-day rates</div>
-          </div>
-          <input type="number" min={1} max={31} value={wdInput}
-            onChange={e => setWdInput(Number(e.target.value))}
-            style={{ width: 64, height: 48, textAlign: 'center', fontSize: 20, fontWeight: 800, borderRadius: 12, border: 'none', background: '#fff', color: 'var(--navy)' }} />
-          <button className="btn btn-blue" style={{ height: 48, padding: '0 24px' }} onClick={async () => {
-            await DB.setWorkingDays(wdInput)
-            setWd(wdInput)
-            toast.success(`Working days updated to ${wdInput}`)
-          }}>Apply</button>
-        </div>
-      </div>
+      </Panel>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+      {/* Tabs (Zoho Style) */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24, gap: 32 }}>
         {[
-          { id: 'weekly', label: 'Weekly Staff', count: weeklyList.length, color: 'var(--blue)' },
-          { id: 'monthly', label: 'Monthly Staff', count: monthlyList.length, color: 'var(--indigo)' }
+          { id: 'weekly', label: 'Weekly Employees', count: weeklyList.length },
+          { id: 'monthly', label: 'Monthly Employees', count: monthlyList.length }
         ].map(tab => (
           <button 
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{ 
-              flex: 1, padding: '20px', borderRadius: 20, border: '2px solid transparent',
-              background: activeTab === tab.id ? tab.color : 'var(--white)',
-              color: activeTab === tab.id ? '#fff' : 'var(--navy)',
-              boxShadow: activeTab === tab.id ? `0 10px 25px -5px ${tab.color}40` : 'var(--shadow-premium)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              textAlign: 'left', cursor: 'pointer'
+              padding: '16px 4px', background: 'none', border: 'none', cursor: 'pointer',
+              color: activeTab === tab.id ? 'var(--blue)' : 'var(--slate)',
+              borderBottom: activeTab === tab.id ? '2px solid var(--blue)' : '2px solid transparent',
+              fontSize: 14, fontWeight: 700, transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 8
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, opacity: activeTab === tab.id ? 0.7 : 0.4, marginBottom: 4 }}>{tab.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{tab.count}</div>
+            {tab.label}
+            <span style={{ fontSize: 11, background: activeTab === tab.id ? 'var(--blue)' : 'var(--border)', color: activeTab === tab.id ? '#fff' : 'var(--slate)', padding: '2px 8px', borderRadius: 10 }}>{tab.count}</span>
           </button>
         ))}
       </div>

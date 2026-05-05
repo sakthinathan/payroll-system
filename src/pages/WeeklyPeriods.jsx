@@ -182,13 +182,13 @@ export function Periods() {
   return (
     <Layout title="Weekly Payroll History">
       {open ? (
-        <div style={{ background: 'linear-gradient(135deg, var(--navy), var(--blue))', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', boxShadow: 'var(--shadow-premium)' }}>
+        <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: 'var(--shadow)' }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, opacity: 0.6, marginBottom: 8 }}>🟢 Active Processing Period</div>
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{open.label}</div>
-            <div style={{ opacity: 0.7, fontSize: 14, fontWeight: 500, marginTop: 4 }}>{new Date(open.date_from).toLocaleDateString('en-IN',{day:'2-digit',month:'long'})} — {new Date(open.date_to).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--blue)', marginBottom: 8 }}>🟢 Active Processing Period</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, color: 'var(--navy)' }}>{open.label}</div>
+            <div style={{ color: 'var(--slate)', opacity: 0.7, fontSize: 14, fontWeight: 500, marginTop: 4 }}>{new Date(open.date_from).toLocaleDateString('en-IN',{day:'2-digit',month:'long'})} — {new Date(open.date_to).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px 20px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', fontSize: 13, fontWeight: 600 }}>Currently accepting entries</div>
+          <div style={{ background: 'var(--blue-light)', color: 'var(--blue)', padding: '12px 24px', borderRadius: 12, fontSize: 13, fontWeight: 700, border: '1px solid var(--blue-light)' }}>Currently accepting entries</div>
         </div>
       ) : (
         <div style={{ background: 'var(--white)', border: '2px dashed var(--border)', borderRadius: 24, padding: '40px', marginBottom: 32, textAlign: 'center' }}>
@@ -353,16 +353,16 @@ export function Weekly() {
       <Layout title="Weekly Entry">
         <AnimatePresence>
           {closedData && (
-            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ background: 'linear-gradient(135deg, var(--emerald), #059669)', borderRadius: 24, padding: '32px', marginBottom: 32, color: '#fff', boxShadow: 'var(--shadow-premium)' }}>
+            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ background: 'var(--white)', border: '1px solid var(--emerald)', borderLeft: '6px solid var(--emerald)', borderRadius: 16, padding: '24px 32px', marginBottom: 32, boxShadow: 'var(--shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, opacity: 0.8, marginBottom: 8 }}>✅ Payroll Finalized</div>
-                  <div style={{ fontSize: 24, fontWeight: 800 }}>{closedData.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--emerald)', marginBottom: 4 }}>✅ Payroll Finalized</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>{closedData.label}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }} onClick={() => setShowPrint(true)}><Printer size={16}/> Print</button>
-                  <button className="btn" style={{ background: '#fff', color: 'var(--emerald)', border: 'none' }} onClick={() => setShowWhatsApp(true)}><Send size={16}/> Notify</button>
-                  <button className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }} onClick={() => setClosedData(null)}><Trash2 size={16}/></button>
+                  <button className="btn" style={{ background: 'var(--grey)', color: 'var(--navy)', border: 'none' }} onClick={() => setShowPrint(true)}><Printer size={16}/> Print</button>
+                  <button className="btn btn-blue" onClick={() => setShowWhatsApp(true)}><Send size={16}/> Notify Staff</button>
+                  <button className="btn" style={{ background: 'var(--grey)', color: 'var(--slate)', border: 'none' }} onClick={() => setClosedData(null)}><X size={16}/></button>
                 </div>
               </div>
             </motion.div>
@@ -399,15 +399,15 @@ export function Weekly() {
 
   return (
     <Layout title="Weekly Payroll Entry">
-      <div style={{ background: 'linear-gradient(135deg, var(--navy), var(--indigo))', borderRadius: 24, padding: '32px', marginBottom: 32, color: '#fff', boxShadow: 'var(--shadow-premium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow)' }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 1.5 }}>Active Processing Period</div>
-          <div style={{ fontSize: 28, fontWeight: 800, margin: '4px 0' }}>{activePeriod.label}</div>
-          <div style={{ opacity: 0.7, fontSize: 14, fontWeight: 500 }}>{allWeekly.length} / {weeklyOnlyEmps.length} Employees Entered</div>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--blue)', letterSpacing: 1.5 }}>Active Processing Period</div>
+          <div style={{ fontSize: 28, fontWeight: 800, margin: '4px 0', color: 'var(--navy)' }}>{activePeriod.label}</div>
+          <div style={{ color: 'var(--slate)', opacity: 0.7, fontSize: 14, fontWeight: 500 }}>{allWeekly.length} / {weeklyOnlyEmps.length} Employees Entered</div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Action</button>}
-          <button className="btn" style={{ background: 'var(--rose)', color: '#fff', border: 'none' }} onClick={() => setCloseConfirm(true)}><Lock size={16}/> Close & Download</button>
+          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'var(--grey)', color: 'var(--navy)', border: 'none' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Action</button>}
+          <button className="btn" style={{ background: 'var(--rose-light)', color: 'var(--rose)', border: 'none' }} onClick={() => setCloseConfirm(true)}><Lock size={16}/> Close & Download</button>
         </div>
       </div>
 

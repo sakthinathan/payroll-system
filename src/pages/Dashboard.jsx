@@ -152,11 +152,11 @@ export default function Dashboard() {
             </div>
           </Panel>
           
-          <div style={{ background: 'linear-gradient(135deg, var(--navy), var(--slate))', borderRadius: '24px', padding: 32, color: '#fff', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ background: '#222', borderRadius: '24px', padding: 32, color: '#fff', position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
             <TrendingUp style={{ position: 'absolute', right: -20, bottom: -20, size: 120, opacity: 0.05 }} />
-            <div style={{ fontSize: 13, opacity: 0.6, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>Current Period</div>
-            <div style={{ fontSize: 24, fontWeight: 800, margin: '8px 0 12px' }}>Weekly Audit</div>
-            <p style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.6, marginBottom: 20 }}>System is tracking 26 staff members for the current financial week.</p>
+            <div style={{ fontSize: 11, opacity: 0.4, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase' }}>Current Period</div>
+            <div style={{ fontSize: 24, fontWeight: 800, margin: '8px 0 12px', color: '#fff' }}>Weekly Audit</div>
+            <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, marginBottom: 20 }}>System is tracking 26 staff members for the current financial week.</p>
             <button className="btn btn-blue" style={{ width: '100%', justifyContent: 'center' }}>View Full Reports</button>
           </div>
         </div>
