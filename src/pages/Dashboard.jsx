@@ -12,55 +12,97 @@ import {
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [selectedFY, setSelectedFY] = useState(() => {
+    const now = new Date()
+    const year = now.getMonth() + 1 <= 3 ? now.getFullYear() - 1 : now.getFullYear()
+    return `${year}-${String(year + 1).slice(2)}`
+  })
   const navigate = useNavigate()
+
+  const getFY = (dateStr) => {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    const year = d.getMonth() + 1 <= 3 ? d.getFullYear() - 1 : d.getFullYear()
+    return `${year}-${String(year + 1).slice(2)}`
+  }
 
   useEffect(() => {
     Promise.all([
-      DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod()
-    ]).then(([emps, weekly, advances, shortages, wd, openP]) => {
-      setData({ emps, weekly, advances, shortages, wd, openP })
+      DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod(), DB.periods()
+    ]).then(([emps, weekly, advances, shortages, wd, openP, allPeriods]) => {
+      setData({ emps, weekly, advances, shortages, wd, openP, allPeriods })
       setLoading(false)
     })
   }, [])
 
   const stats = useMemo(() => {
     if (!data) return null
-    const { emps, weekly, advances, shortages, wd, openP } = data
+    const { emps, weekly, advances, shortages, wd, openP, allPeriods } = data
+    const periodMap = {}
+    allPeriods.forEach(p => periodMap[p.id] = p)
     
     // 1. Map-based lookups for O(N) efficiency
     const empMap = DB.createEmpMap(emps)
     
-    // 2. Efficient single-pass calculations
+    // 2. Filter data by FY
+    const fyWeekly = weekly.filter(w => {
+      const p = periodMap[w.period_id]
+      return p && getFY(p.date_from) === selectedFY
+    })
+    const fyAdvances = advances.filter(a => getFY(a.date) === selectedFY)
+    const fyShortages = shortages.filter(s => getFY(s.date) === selectedFY)
+
+    // 3. Efficient calculations
     let totalWeeklyPay = 0
     let totalAdv = 0
     let totalShr = 0
     
-    weekly.forEach(w => {
+    fyWeekly.forEach(w => {
       const emp = empMap[w.name]
       totalWeeklyPay += DB.weekSalary(w, emp, wd)
     })
     
-    advances.forEach(a => totalAdv += Number(a.amount || 0))
-    shortages.forEach(s => totalShr += Number(s.amount || 0))
+    fyAdvances.forEach(a => totalAdv += Number(a.amount || 0))
+    fyShortages.forEach(s => totalShr += Number(s.amount || 0))
     
-    const latestWeekly = weekly.slice(0, 8)
+    const latestWeekly = fyWeekly.slice(0, 8)
     const activeEmps = emps.length
     const weeklyEmps = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type).length
     
     let processedCount = 0
-    if (openP) {
+    if (openP && getFY(openP.date_from) === selectedFY) {
       processedCount = weekly.filter(w => w.period_id === openP.id).length
     }
     
-    return { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps }
-  }, [data])
+    // Get all available FYs
+    const fys = new Set()
+    allPeriods.forEach(p => { const fy = getFY(p.date_from); if (fy) fys.add(fy) })
+    advances.forEach(a => { const fy = getFY(a.date); if (fy) fys.add(fy) })
+    if (fys.size === 0) fys.add(selectedFY)
+    
+    return { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs: Array.from(fys).sort().reverse() }
+  }, [data, selectedFY])
 
   if (loading) return <Layout title="Dashboard"><Spinner /></Layout>
 
-  const { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps } = stats
+  const { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs } = stats
 
   return (
-    <Layout title="Payroll Overview">
+    <Layout title={
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <span>Payroll Overview</span>
+        <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Financial Year</span>
+          <select 
+            value={selectedFY} 
+            onChange={e => setSelectedFY(e.target.value)}
+            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, outline: 'none', cursor: 'pointer' }}
+          >
+            {availableFYs.map(fy => <option key={fy} value={fy} style={{ color: '#000' }}>FY {fy}</option>)}
+          </select>
+        </div>
+      </div>
+    }>
       <div className="kpi-grid">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="kpi-card">
