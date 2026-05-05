@@ -4,7 +4,7 @@ import { DB, fmt } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Panel, Spinner } from '../components/UI'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { BRAND } from '../config/branding'
 import { Search, Zap, Lock, History, Download, Printer, FileText, Landmark } from 'lucide-react'
 import { uid } from '../lib/db'
@@ -213,7 +213,7 @@ async function generateDetailedPDF(label, type, entries, emps, advances, shortag
     ]
   })
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 48,
     head: [['S.No', 'Employee Name', 'Gross Salary', 'Days', 'Leaves', 'Adv Ded', 'Shr Ded', 'Adv Pend', 'Shr Pend', 'Net Salary']],
     body: tableData,
