@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import toast from 'react-hot-toast'
-import { DB, fmt } from '../lib/db'
-import { Layout } from '../components/Layout'
 import { Panel, Spinner } from '../components/UI'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
+import { BRAND } from '../config/branding'
 
 // ── REMITTER DETAILS ──────────────────────────────────────────────
 const REMITTER_ACC   = '33284893641'
@@ -159,18 +158,29 @@ function openPrintWindow(label, entries, emps, bankList, wd) {
   win.document.close()
 }
 
-// ── DETAILED EXCEL GENERATOR ──────────────────────────────────────
-async function generateDetailedExcel(label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd) {
-  const XLSX = await loadSheetJS()
-  const rows = [
-    ['THULIR AGENCY — DETAILED PAYROLL REPORT'],
-    [`Period: ${label} (${type.toUpperCase()})`],
-    [`Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`],
-    [],
-    ['S.No', 'Employee Name', 'Gross Salary', 'Days Worked', 'Leaves', 'Adv Ded', 'Shr Ded', 'Adv Pending', 'Shr Pending', 'Net Salary']
-  ]
+// ── DETAILED PDF GENERATOR ────────────────────────────────────────
+async function generateDetailedPDF(label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd) {
+  const doc = new jsPDF('l', 'mm', 'a4') // Landscape for many columns
+  const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+  
+  // Header
+  doc.setFontSize(22)
+  doc.setTextColor(31, 56, 100) // #1F3864
+  doc.text(BRAND.name, 14, 20)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`${BRAND.address} | ${BRAND.tagline}`, 14, 26)
+  
+  doc.setFontSize(14)
+  doc.setTextColor(0)
+  doc.text(`DETAILED PAYROLL REPORT — ${label.toUpperCase()}`, 14, 38)
+  
+  doc.setFontSize(9)
+  doc.text(`Type: ${type.toUpperCase()} Payroll Cycle`, 14, 43)
+  doc.text(`Generated On: ${today}`, 283, 43, { align: 'right' })
 
-  entries.forEach((entry, i) => {
+  const tableData = entries.map((entry, i) => {
     const emp = emps.find(e => e.name === entry.name)
     const ap = type === 'weekly' 
       ? DB.advPending(entry.name, advances, allWeekly)
@@ -183,7 +193,7 @@ async function generateDetailedExcel(label, type, entries, emps, advances, short
       ? DB.weekSalary(entry, emp, wd)
       : DB.monthlySalary(entry, emp, wd))
 
-    rows.push([
+    return [
       i + 1,
       entry.name,
       emp?.salary || 0,
@@ -194,17 +204,35 @@ async function generateDetailedExcel(label, type, entries, emps, advances, short
       ap,
       sp,
       salary
-    ])
+    ]
   })
 
-  const wb = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  sheet['!cols'] = [
-    { wch: 6 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 8 },
-    { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
-  ]
-  XLSX.utils.book_append_sheet(wb, sheet, 'Detailed Report')
-  XLSX.writeFile(wb, `${label.replace(/\s+/g, '-')}-Detailed-Report.xlsx`)
+  doc.autoTable({
+    startY: 48,
+    head: [['S.No', 'Employee Name', 'Gross Salary', 'Days', 'Leaves', 'Adv Ded', 'Shr Ded', 'Adv Pend', 'Shr Pend', 'Net Salary']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [31, 56, 100], textColor: 255, fontSize: 9, halign: 'center' },
+    styles: { fontSize: 8, cellPadding: 3 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { fontStyle: 'bold', cellWidth: 45 },
+      2: { halign: 'right' },
+      3: { halign: 'center' },
+      4: { halign: 'center' },
+      5: { halign: 'right', textColor: [244, 67, 54] },
+      6: { halign: 'right', textColor: [244, 67, 54] },
+      7: { halign: 'right' },
+      8: { halign: 'right' },
+      9: { halign: 'right', fontStyle: 'bold', textColor: [0, 103, 255] }
+    },
+    didDrawPage: (data) => {
+      doc.setFontSize(8)
+      doc.text(`Page ${doc.internal.getNumberOfPages()}`, 283, 205, { align: 'right' })
+    }
+  })
+
+  doc.save(`${label.replace(/\s+/g, '-')}-Detailed-Report.pdf`)
 }
 
 // ── DOWNLOADS PAGE ────────────────────────────────────────────────
@@ -288,8 +316,8 @@ export default function Downloads() {
     if (!entries.length) { toast.error('No entries found for this period'); return }
     setDetailed(period.id)
     try {
-      await generateDetailedExcel(period.label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd)
-      toast.success('Detailed Report Downloaded!')
+      await generateDetailedPDF(period.label, type, entries, emps, advances, shortages, allWeekly, allMonthly, wd)
+      toast.success('Detailed PDF Report Downloaded!')
     } catch (e) {
       toast.error('Failed: ' + e.message)
     }
@@ -371,7 +399,7 @@ export default function Downloads() {
                           onClick={() => handleDetailedDownload(p, tab)}
                           disabled={detailed === p.id}
                         >
-                          {detailed === p.id ? '⏳' : '📊'} {detailed === p.id ? '...' : 'Detailed Excel'}
+                          {detailed === p.id ? '⏳' : '📄'} {detailed === p.id ? '...' : 'Detailed PDF'}
                         </button>
                       </td>
                       <td>
@@ -405,7 +433,7 @@ export default function Downloads() {
       )}
 
       <div style={{ background: 'var(--grey)', borderRadius: 10, padding: '14px 18px', fontSize: 12, color: 'var(--mid)', marginTop: 8 }}>
-        <strong style={{ color: 'var(--navy)' }}>📌 Note:</strong> <strong>Detailed Excel</strong> contains all columns including Days, Leaves, Deductions, and Pending balances. 
+        <strong style={{ color: 'var(--navy)' }}>📌 Note:</strong> <strong>Detailed PDF</strong> contains all audit columns including Days, Leaves, Deductions, and Pending balances. 
         <strong>Bank Excel</strong> is for SBI bulk upload.
       </div>
     </Layout>
