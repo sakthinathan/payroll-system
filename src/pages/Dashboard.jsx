@@ -3,27 +3,29 @@ import { DB, fmt } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Panel, Spinner } from '../components/UI'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { 
   Users, Wallet, AlertCircle, Banknote, 
-  ArrowUpRight, ArrowDownRight, TrendingUp 
+  ArrowUpRight, ArrowDownRight, TrendingUp, CheckCircle2 
 } from 'lucide-react'
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     Promise.all([
-      DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays()
-    ]).then(([emps, weekly, advances, shortages, wd]) => {
-      setData({ emps, weekly, advances, shortages, wd })
+      DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod()
+    ]).then(([emps, weekly, advances, shortages, wd, openP]) => {
+      setData({ emps, weekly, advances, shortages, wd, openP })
       setLoading(false)
     })
   }, [])
 
   const stats = useMemo(() => {
     if (!data) return null
-    const { emps, weekly, advances, shortages, wd } = data
+    const { emps, weekly, advances, shortages, wd, openP } = data
     
     // 1. Map-based lookups for O(N) efficiency
     const empMap = DB.createEmpMap(emps)
@@ -43,13 +45,19 @@ export default function Dashboard() {
     
     const latestWeekly = weekly.slice(0, 8)
     const activeEmps = emps.length
+    const weeklyEmps = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type).length
     
-    return { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd }
+    let processedCount = 0
+    if (openP) {
+      processedCount = weekly.filter(w => w.period_id === openP.id).length
+    }
+    
+    return { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps }
   }, [data])
 
   if (loading) return <Layout title="Dashboard"><Spinner /></Layout>
 
-  const { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd } = stats
+  const { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps } = stats
 
   return (
     <Layout title="Payroll Overview">
@@ -154,10 +162,26 @@ export default function Dashboard() {
           
           <div style={{ background: '#222', borderRadius: '24px', padding: 32, color: '#fff', position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
             <TrendingUp style={{ position: 'absolute', right: -20, bottom: -20, size: 120, opacity: 0.05 }} />
-            <div style={{ fontSize: 11, opacity: 0.4, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase' }}>Current Period</div>
-            <div style={{ fontSize: 24, fontWeight: 800, margin: '8px 0 12px', color: '#fff' }}>Weekly Audit</div>
-            <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, marginBottom: 20 }}>System is tracking 26 staff members for the current financial week.</p>
-            <button className="btn btn-blue" style={{ width: '100%', justifyContent: 'center' }}>View Full Reports</button>
+            <div style={{ fontSize: 11, opacity: 0.4, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase' }}>{openP ? openP.label : 'Current Period'}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, margin: '8px 0 4px', color: '#fff' }}>Weekly Audit</div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 24px' }}>
+              <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(processedCount/weeklyEmps)*100}%` }}
+                  style={{ height: '100%', background: 'var(--blue)' }}
+                />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--blue)' }}>{processedCount}/{weeklyEmps}</span>
+            </div>
+
+            <p style={{ fontSize: 13, opacity: 0.6, lineHeight: 1.6, marginBottom: 24 }}>
+              {openP ? `Currently processing attendance for ${openP.label}.` : 'No active payroll week found. Start a new period to track audit.'}
+            </p>
+            <button className="btn btn-blue" style={{ width: '100%', justifyContent: 'center', height: 48 }} onClick={() => navigate('/weekly')}>
+              {openP ? 'Complete Processing' : 'View Full Reports'}
+            </button>
           </div>
         </div>
       </div>
