@@ -3,8 +3,9 @@ import toast from 'react-hot-toast'
 import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
+import { BRAND } from '../config/branding'
 import { motion } from 'framer-motion'
-import { UserPlus, Calendar, Info, Search } from 'lucide-react'
+import { UserPlus, Calendar, Info, Search, Contact, CreditCard } from 'lucide-react'
 
 export default function Employees() {
   const [emps, setEmps] = useState([])
@@ -14,7 +15,11 @@ export default function Employees() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [confirm, setConfirm] = useState(null)
-  const [form, setForm] = useState({ name: '', salary: '', salaryType: 'weekly' })
+  const [form, setForm] = useState({ 
+    name: '', salary: '', salaryType: 'weekly', 
+    empId: '', identityNo: '', joiningDate: '', 
+    relievingDate: '', phone: '', address: '' 
+  })
   const [activeTab, setActiveTab] = useState('weekly')
 
   const load = useCallback(async () => {
@@ -27,24 +32,30 @@ export default function Employees() {
   const weeklyList  = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type)
   const monthlyList = emps.filter(e => e.salary_type === 'monthly')
   const displayList = (activeTab === 'weekly' ? weeklyList : monthlyList)
-    .filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.emp_id?.toLowerCase().includes(search.toLowerCase()))
 
-  const weeklyTotal  = weeklyList.reduce((s, e) => s + Number(e.salary), 0)
-  const monthlyTotal = monthlyList.reduce((s, e) => s + Number(e.salary), 0)
-
-  const saveWD = async () => {
-    if (!wdInput || wdInput < 1 || wdInput > 31) { toast.error('Enter 1–31'); return }
-    await DB.setWorkingDays(wdInput)
-    setWd(wdInput)
-    toast.success(`Working days updated to ${wdInput}`)
-  }
-
-  const openAdd = () => {
-    setForm({ name: '', salary: '', salaryType: activeTab })
+  const openAdd = async () => {
+    const nextId = await DB.getNextEmpId(BRAND.shortName)
+    setForm({ 
+      name: '', salary: '', salaryType: activeTab, 
+      empId: nextId, identityNo: '', 
+      joiningDate: new Date().toISOString().split('T')[0], 
+      relievingDate: '', phone: '', address: '' 
+    })
     setModal({ type: 'add' })
   }
+
   const openEdit = emp => {
-    setForm({ name: emp.name, salary: emp.salary, salaryType: emp.salary_type || 'weekly' })
+    setForm({ 
+      name: emp.name, salary: emp.salary, 
+      salaryType: emp.salary_type || 'weekly',
+      empId: emp.emp_id || '', 
+      identityNo: emp.identity_no || '',
+      joiningDate: emp.joining_date || '',
+      relievingDate: emp.relieving_date || '',
+      phone: emp.phone || '',
+      address: emp.address || ''
+    })
     setModal({ type: 'edit', emp })
   }
 
@@ -52,11 +63,18 @@ export default function Employees() {
     const name = form.name.trim().toUpperCase()
     const salary = Number(form.salary)
     if (!name || !salary) { toast.error('Name and salary required'); return }
+    
+    const payload = { 
+      ...form, 
+      id: modal.type === 'add' ? uid() : modal.emp.id,
+      name 
+    }
+
     if (modal.type === 'add') {
-      await DB.saveEmployee({ id: uid(), name, salary, salaryType: form.salaryType })
+      await DB.saveEmployee(payload)
       toast.success('Employee added ✅')
     } else {
-      await DB.updateEmployee({ id: modal.emp.id, name, salary, salaryType: form.salaryType })
+      await DB.updateEmployee(payload)
       toast.success('Saved ✅')
     }
     setModal(null)
@@ -93,7 +111,11 @@ export default function Employees() {
           <input type="number" min={1} max={31} value={wdInput}
             onChange={e => setWdInput(Number(e.target.value))}
             style={{ width: 64, height: 48, textAlign: 'center', fontSize: 20, fontWeight: 800, borderRadius: 12, border: 'none', background: '#fff', color: 'var(--navy)' }} />
-          <button className="btn btn-blue" style={{ height: 48, padding: '0 24px' }} onClick={saveWD}>Apply</button>
+          <button className="btn btn-blue" style={{ height: 48, padding: '0 24px' }} onClick={async () => {
+            await DB.setWorkingDays(wdInput)
+            setWd(wdInput)
+            toast.success(`Working days updated to ${wdInput}`)
+          }}>Apply</button>
         </div>
       </div>
 
@@ -126,7 +148,7 @@ export default function Employees() {
         <div style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
           <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
           <input 
-            placeholder={`Search ${activeTab} directory...`} 
+            placeholder={`Search by name or ID...`} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
             style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontSize: 14, fontWeight: 500 }}
@@ -143,10 +165,11 @@ export default function Employees() {
           <table>
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Employee Name</th>
                 <th>Payment Type</th>
                 <th>Base Salary</th>
-                <th>Current Daily Rate</th>
+                <th>Joined On</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -158,6 +181,7 @@ export default function Employees() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 * idx }}
                 >
+                  <td style={{ fontSize: 12, fontWeight: 700, color: 'var(--blue)' }}>{e.emp_id || 'N/A'}</td>
                   <td><strong style={{ fontSize: 14, fontWeight: 700 }}>{e.name}</strong></td>
                   <td>
                     <span className={`badge ${e.salary_type === 'monthly' ? 'badge-blue' : 'badge-green'}`}>
@@ -165,7 +189,7 @@ export default function Employees() {
                     </span>
                   </td>
                   <td className="amt amt-blue" style={{ fontSize: 15 }}>{fmt(e.salary)}</td>
-                  <td className="amt" style={{ color: 'var(--slate)', opacity: 0.6 }}>{fmt((e.salary / wd).toFixed(2))}</td>
+                  <td style={{ fontSize: 13, color: 'var(--slate)' }}>{e.joining_date || '—'}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="flex-gap" style={{ justifyContent: 'flex-end' }}>
                       <button className="btn btn-sm" style={{ background: 'var(--bg)', color: 'var(--navy)', border: 'none' }} onClick={() => openEdit(e)}>Edit</button>
@@ -176,7 +200,7 @@ export default function Employees() {
               ))}
               {!displayList.length && (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: 60 }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: 60 }}>
                     <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.2 }}>🔍</div>
                     <p style={{ color: 'var(--slate)', opacity: 0.5, fontWeight: 600 }}>No employees found matching your search</p>
                   </td>
@@ -189,19 +213,56 @@ export default function Employees() {
 
       {modal && (
         <Modal title={modal.type === 'add' ? 'Add New Staff' : 'Update Staff Record'} onClose={() => setModal(null)} onSave={save}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-            <Field label="Full Name">
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Enter name in CAPS" className="form-input" />
-            </Field>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <Field label="Monthly Base Salary (₹)">
-                <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="e.g. 18000" className="form-input" />
-              </Field>
-              <Field label="Salary Classification">
-                <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))} className="form-input">
-                  <option value="weekly">Weekly Payment</option>
-                  <option value="monthly">Monthly Payment</option>
-                </select>
+          <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 8 }}>
+            <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--blue)', marginBottom: 16 }}>
+                <CreditCard size={18} />
+                <h4 style={{ fontSize: 14, fontWeight: 800 }}>PAYROLL INFORMATION</h4>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <Field label="Employee ID">
+                  <input value={form.empId} readOnly className="form-input" style={{ background: 'var(--bg)', opacity: 0.7 }} />
+                </Field>
+                <Field label="Salary Classification">
+                  <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))} className="form-input">
+                    <option value="weekly">Weekly Payment</option>
+                    <option value="monthly">Monthly Payment</option>
+                  </select>
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+                <Field label="Full Name">
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="CAPS" className="form-input" />
+                </Field>
+                <Field label="Monthly Base Salary (₹)">
+                  <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} className="form-input" />
+                </Field>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo)', marginBottom: 16 }}>
+                <Contact size={18} />
+                <h4 style={{ fontSize: 14, fontWeight: 800 }}>PERSONAL DETAILS</h4>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <Field label="National Identity (Aadhaar/PAN)">
+                  <input value={form.identityNo} onChange={e => setForm(f => ({ ...f, identityNo: e.target.value }))} className="form-input" />
+                </Field>
+                <Field label="Phone Number">
+                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="form-input" />
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+                <Field label="Date of Joining">
+                  <input type="date" value={form.joiningDate} onChange={e => setForm(f => ({ ...f, joiningDate: e.target.value }))} className="form-input" />
+                </Field>
+                <Field label="Date of Relieving (If Any)">
+                  <input type="date" value={form.relievingDate} onChange={e => setForm(f => ({ ...f, relievingDate: e.target.value }))} className="form-input" />
+                </Field>
+              </div>
+              <Field label="Residential Address" style={{ marginTop: 20 }}>
+                <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="form-input" rows={2} style={{ resize: 'none' }} />
               </Field>
             </div>
           </div>
