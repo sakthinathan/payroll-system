@@ -197,7 +197,8 @@ export function Monthly() {
       </div>
 
       <div style={{ position: 'relative', marginBottom: 24 }}>
-        <input placeholder="Search monthly staff..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontWeight: 600 }} />
+        <input placeholder="Search monthly staff..." className="form-input" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 48 }} />
+        <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
       </div>
 
       <Panel noPad subtitle={`Recalculating based on ${wd} base working days`}>
@@ -232,11 +233,10 @@ export function Monthly() {
         </div>
       </Panel>
 
-      {bulkModal && (
         <Modal title="⚡ Bulk Monthly Entry" onClose={() => setBulkModal(false)} onSave={bulkAdd} saveLabel={`Apply to ${pendingEmps.length} Staff`}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <Field label="Standard Days"><input type="number" value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
-            <Field label="Standard Leaves"><input type="number" value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
+            <Field label="Standard Days"><input type="number" className="form-input" value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
+            <Field label="Standard Leaves"><input type="number" className="form-input" value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
           </div>
         </Modal>
       )}
