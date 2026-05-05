@@ -45,7 +45,6 @@ export function Layout({ children, title }) {
       { path: '/downloads', label: 'Downloads', icon: <Download size={18} /> },
     ]},
     { section: 'System', items: [
-      { path: '/backup', label: 'Backup & Export', icon: <Database size={18} /> },
       { path: '/changepw', label: 'Change Password', icon: <Key size={18} /> },
     ]}
   ]

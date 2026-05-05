@@ -12,7 +12,7 @@ import { Weekly, Periods } from './pages/WeeklyPeriods'
 import { Monthly }         from './pages/MonthlyEntry'
 import { MonthlyPeriods }  from './pages/MonthlyPeriods'
 import Ledger from './pages/Ledger'
-import { Payslip, Backup } from './pages/PayslipBackup'
+import { Payslip } from './pages/PayslipBackup'
 import Downloads    from './pages/Downloads'
 
 function Protected({ children }) {
@@ -45,7 +45,6 @@ function AppRoutes() {
       <Route path="/bank" element={<Protected><Bank /></Protected>} />
       <Route path="/payslip" element={<Protected><Payslip /></Protected>} />
       <Route path="/downloads" element={<Protected><Downloads /></Protected>} />
-      <Route path="/backup" element={<Protected><Backup /></Protected>} />
       <Route path="/changepw" element={<Protected><ChangePassword /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
