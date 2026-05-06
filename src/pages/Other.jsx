@@ -79,14 +79,14 @@ export function Advances() {
       {modal && (
         <Modal title="Record New Advance" onClose={() => setModal(false)} onSave={save}>
           <div className="form-grid cols2">
-            <Field label="Date"><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
+            <Field label="Date"><input type="date" className="form-input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
             <Field label="Employee">
-              <select value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
+              <select className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
                 {emps.map(e => <option key={e.id}>{e.name}</option>)}
               </select>
             </Field>
-            <Field label="Amount (₹)"><input type="number" min={0} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="e.g. 2000" /></Field>
-            <Field label="Remarks"><input value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Medical" /></Field>
+            <Field label="Amount (₹)"><input type="number" className="form-input" min={0} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="e.g. 2000" /></Field>
+            <Field label="Remarks"><input className="form-input" value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Medical" /></Field>
           </div>
         </Modal>
       )}
@@ -165,14 +165,14 @@ export function Shortages() {
       {modal && (
         <Modal title="Record Shortage" onClose={() => setModal(false)} onSave={save}>
           <div className="form-grid cols2">
-            <Field label="Date"><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
+            <Field label="Date"><input type="date" className="form-input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></Field>
             <Field label="Employee">
-              <select value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
+              <select className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
                 {emps.map(e => <option key={e.id}>{e.name}</option>)}
               </select>
             </Field>
-            <Field label="Amount (₹)"><input type="number" min={0} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></Field>
-            <Field label="Remarks"><input value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Material damage" /></Field>
+            <Field label="Amount (₹)"><input type="number" className="form-input" min={0} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></Field>
+            <Field label="Remarks"><input className="form-input" value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="e.g. Material damage" /></Field>
           </div>
         </Modal>
       )}
@@ -197,7 +197,7 @@ export function Deductions() {
       <div style={{ background: 'var(--yellow)', borderRadius: 10, padding: '12px 18px', marginBottom: 18, fontSize: 13 }}>
         📌 Fully automatic — calculated from Advance Log, Shortage Log and Weekly Entry.
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="dashboard-main-grid">
         <Panel title="💰 Advance Summary" noPad>
           <div className="tbl-wrap">            <table>
               <thead><tr><th>Employee</th><th>Given</th><th>Deducted</th><th>Pending</th></tr></thead>
@@ -307,16 +307,16 @@ export function Bank() {
         <Modal title={modal === 'add' ? 'Add Bank Account' : 'Edit Bank Account'} onClose={() => setModal(null)} onSave={save}>
           <div className="form-grid cols2">
             <Field label="Employee" style={{ gridColumn: '1/-1' }}>
-              <select value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
+              <select className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
                 {emps.map(e => <option key={e.id}>{e.name}</option>)}
               </select>
             </Field>
-            <Field label="Bank Name"><input value={form.bank} onChange={e => setForm(f => ({ ...f, bank: e.target.value }))} /></Field>
-            <Field label="Account Number"><input value={form.acc} onChange={e => setForm(f => ({ ...f, acc: e.target.value }))} /></Field>
-            <Field label="IFSC Code"><input value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value }))} /></Field>
-            <Field label="Branch"><input value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} /></Field>
+            <Field label="Bank Name"><input className="form-input" value={form.bank} onChange={e => setForm(f => ({ ...f, bank: e.target.value }))} /></Field>
+            <Field label="Account Number"><input className="form-input" value={form.acc} onChange={e => setForm(f => ({ ...f, acc: e.target.value }))} /></Field>
+            <Field label="IFSC Code"><input className="form-input" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value }))} /></Field>
+            <Field label="Branch"><input className="form-input" value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} /></Field>
             <Field label="📱 WhatsApp (10 digits)" style={{ gridColumn: '1/-1' }}>
-              <input type="tel" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="9876543210" />
+              <input type="tel" className="form-input" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="9876543210" />
             </Field>
           </div>
         </Modal>
@@ -354,8 +354,8 @@ export function ChangePassword() {
       <div style={{ maxWidth: 500, margin: '0 auto' }}>
         <Panel title="🔑 Change Your Password" subtitle="Security settings">
           <div className="form-grid" style={{ gap: 16 }}>
-            <Field label="New Password"><input type="password" value={form.new} onChange={e => setForm(f => ({ ...f, new: e.target.value }))} placeholder="Min 6 characters" /></Field>
-            <Field label="Confirm New Password"><input type="password" value={form.conf} onChange={e => setForm(f => ({ ...f, conf: e.target.value }))} /></Field>
+            <Field label="New Password"><input type="password" className="form-input" value={form.new} onChange={e => setForm(f => ({ ...f, new: e.target.value }))} placeholder="Min 6 characters" /></Field>
+            <Field label="Confirm New Password"><input type="password" className="form-input" value={form.conf} onChange={e => setForm(f => ({ ...f, conf: e.target.value }))} /></Field>
           </div>
           {error && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{error}</div>}
           <button className="btn btn-primary mt-16" onClick={changePw} disabled={updating}>

@@ -151,13 +151,13 @@ export function Monthly() {
       <Layout title="Monthly Entry">
         <AnimatePresence>
           {closedData && (
-            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} style={{ background: 'linear-gradient(135deg, var(--indigo), var(--blue))', borderRadius: 24, padding: '32px', marginBottom: 32, color: '#fff', boxShadow: 'var(--shadow-premium)' }}>
+            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} style={{ background: 'var(--white)', border: '1px solid var(--blue)', borderLeft: '6px solid var(--blue)', borderRadius: 16, padding: '24px 32px', marginBottom: 32, boxShadow: 'var(--shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5, opacity: 0.8, marginBottom: 8 }}>✅ Monthly Period Closed</div>
-                  <div style={{ fontSize: 24, fontWeight: 800 }}>{closedData.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--blue)', marginBottom: 4 }}>✅ Monthly Period Closed</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>{closedData.label}</div>
                 </div>
-                <button className="btn" style={{ background: '#fff', color: 'var(--indigo)', border: 'none' }} onClick={() => setClosedData(null)}>Dismiss</button>
+                <button className="btn" style={{ background: 'var(--grey)', color: 'var(--slate)', border: 'none' }} onClick={() => setClosedData(null)}>Dismiss</button>
               </div>
             </motion.div>
           )}
@@ -165,7 +165,7 @@ export function Monthly() {
 
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <Panel title="Initialize Monthly Payroll" subtitle={`Managing ${emps.length} staff members`}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="form-grid cols2" style={{ marginBottom: 24 }}>
               <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
               <Field label="Year"><select className="form-input" value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year:Number(e.target.value) }))}>{[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map(y => <option key={y}>{y}</option>)}</select></Field>
             </div>
@@ -184,20 +184,21 @@ export function Monthly() {
 
   return (
     <Layout title="Monthly Payroll Processing">
-      <div style={{ background: 'linear-gradient(135deg, var(--slate), var(--navy))', borderRadius: 24, padding: '32px', marginBottom: 32, color: '#fff', boxShadow: 'var(--shadow-premium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow)' }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', opacity: 0.6, letterSpacing: 1.5 }}>Active Monthly Period</div>
-          <div style={{ fontSize: 28, fontWeight: 800, margin: '4px 0' }}>{activePeriod.label}</div>
-          <div style={{ opacity: 0.7, fontSize: 14, fontWeight: 500 }}>{allMonthly.length} / {emps.length} Staff Processed</div>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--blue)', letterSpacing: 1.5 }}>Active Monthly Period</div>
+          <div style={{ fontSize: 28, fontWeight: 800, margin: '4px 0', color: 'var(--navy)' }}>{activePeriod.label}</div>
+          <div style={{ color: 'var(--slate)', opacity: 0.7, fontSize: 14, fontWeight: 500 }}>{allMonthly.length} / {emps.length} Staff Processed</div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Add</button>}
-          <button className="btn" style={{ background: 'var(--rose)', color: '#fff', border: 'none' }} onClick={() => setCloseConfirm(true)}><Lock size={16}/> Finalize Month</button>
+          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'var(--grey)', color: 'var(--navy)', border: 'none' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Add</button>}
+          <button className="btn" style={{ background: 'var(--rose-light)', color: 'var(--rose)', border: 'none' }} onClick={() => setCloseConfirm(true)}><Lock size={16}/> Finalize Month</button>
         </div>
       </div>
 
       <div style={{ position: 'relative', marginBottom: 24 }}>
-        <input placeholder="Search monthly staff..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontWeight: 600 }} />
+        <input placeholder="Search monthly staff..." className="form-input" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 48 }} />
+        <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
       </div>
 
       <Panel noPad subtitle={`Recalculating based on ${wd} base working days`}>
@@ -234,9 +235,9 @@ export function Monthly() {
 
       {bulkModal && (
         <Modal title="⚡ Bulk Monthly Entry" onClose={() => setBulkModal(false)} onSave={bulkAdd} saveLabel={`Apply to ${pendingEmps.length} Staff`}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <Field label="Standard Days"><input type="number" value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
-            <Field label="Standard Leaves"><input type="number" value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
+          <div className="form-grid cols2">
+            <Field label="Standard Days"><input type="number" className="form-input" value={bulkForm.daysWorked} onChange={e => setBulkForm(f => ({ ...f, daysWorked:Number(e.target.value) }))} /></Field>
+            <Field label="Standard Leaves"><input type="number" className="form-input" value={bulkForm.leaves} onChange={e => setBulkForm(f => ({ ...f, leaves:Number(e.target.value) }))} /></Field>
           </div>
         </Modal>
       )}

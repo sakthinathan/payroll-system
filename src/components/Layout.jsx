@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BRAND } from '../config/branding'
 import { 
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
@@ -44,7 +45,6 @@ export function Layout({ children, title }) {
       { path: '/downloads', label: 'Downloads', icon: <Download size={18} /> },
     ]},
     { section: 'System', items: [
-      { path: '/backup', label: 'Backup & Export', icon: <Database size={18} /> },
       { path: '/changepw', label: 'Change Password', icon: <Key size={18} /> },
     ]}
   ]
@@ -64,19 +64,7 @@ export function Layout({ children, title }) {
       </AnimatePresence>
 
       <aside id="sidebar" className={isMenuOpen ? 'open' : ''}>
-        <div className="sidebar-logo">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1>THULIR AGENCY</h1>
-              <span>Payroll v2.0</span>
-            </div>
-            <button className="mobile-only" onClick={() => setIsMenuOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.5 }}>
-              <X size={24} />
-            </button>
-          </div>
-        </div>
-
-        <nav style={{ paddingBottom: 40 }}>
+        <nav style={{ paddingTop: 20, paddingBottom: 40 }}>
           {navItems.map(sec => (
             <div key={sec.section}>
               <div className="nav-section">{sec.section}</div>
@@ -84,18 +72,15 @@ export function Layout({ children, title }) {
                 <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
                   <span className="icon">{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {location.pathname === item.path && (
-                    <motion.div layoutId="active-pill" style={{ position: 'absolute', right: 8, width: 4, height: 16, background: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
-                  )}
                 </NavLink>
               ))}
             </div>
           ))}
           
-          <div style={{ marginTop: 24, padding: '0 16px' }}>
-            <button onClick={logout} className="btn" style={{ width: '100%', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', border: 'none', justifyContent: 'flex-start', padding: '12px 20px' }}>
-              <LogOut size={18} />
-              <span style={{ fontWeight: 700, marginLeft: 12 }}>Logout</span>
+          <div style={{ marginTop: 24, padding: '0 12px' }}>
+            <button onClick={logout} className="btn" style={{ width: '100%', background: 'var(--grey)', color: 'var(--rose)', border: 'none', justifyContent: 'flex-start', padding: '10px 16px', borderRadius: 8 }}>
+              <LogOut size={16} />
+              <span style={{ fontWeight: 600, marginLeft: 12, fontSize: 13 }}>Logout</span>
             </button>
           </div>
         </nav>
@@ -103,27 +88,35 @@ export function Layout({ children, title }) {
 
       <main id="main">
         <header id="topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button className="mobile-only btn" style={{ padding: 8, background: '#fff', border: '1px solid var(--border)' }} onClick={() => setIsMenuOpen(true)}>
-              <Menu size={20} />
-            </button>
-            <div>
-              <h2>{title}</h2>
-              <div className="meta">{today}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ background: 'var(--blue)', width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Landmark size={20} color="#fff" />
+              </div>
+              <h1 style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>{BRAND.name}</h1>
+            </div>
+            
+            <div className="desktop-only" style={{ height: 32, width: 1, background: 'rgba(255,255,255,0.1)' }} />
+            
+            <div className="desktop-only">
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{title}</h2>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div className="desktop-only" style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>{user?.email?.split('@')[0]}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--blue)', textTransform: 'capitalize' }}>Admin</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>System Administrator</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{BRAND.name}</div>
             </div>
             <div 
-              style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--navy)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, cursor: 'pointer' }}
+              style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, cursor: 'pointer', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               onClick={() => navigate('/changepw')}
             >
-              {user?.email?.[0].toUpperCase()}
+              {user?.email?.[0].toUpperCase() || 'A'}
             </div>
+            <button className="mobile-only btn" style={{ padding: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => setIsMenuOpen(true)}>
+              <Menu size={20} />
+            </button>
           </div>
         </header>
 

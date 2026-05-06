@@ -46,16 +46,36 @@ export const DB = {
 
   saveEmployee: emp => supabase.from('employees').insert({
     id: emp.id,
+    emp_id: emp.empId,
     name: emp.name,
     salary: emp.salary,
-    salary_type: emp.salaryType || 'weekly'
+    salary_type: emp.salaryType || 'weekly',
+    identity_no: emp.identityNo,
+    joining_date: emp.joiningDate,
+    relieving_date: emp.relievingDate,
+    phone: emp.phone,
+    address: emp.address
   }),
 
   updateEmployee: emp => supabase.from('employees').update({
     name: emp.name,
     salary: emp.salary,
-    salary_type: emp.salaryType || 'weekly'
+    salary_type: emp.salaryType || 'weekly',
+    emp_id: emp.empId,
+    identity_no: emp.identityNo,
+    joining_date: emp.joiningDate,
+    relieving_date: emp.relievingDate,
+    phone: emp.phone,
+    address: emp.address
   }).eq('id', emp.id),
+
+  getNextEmpId: async (prefix = 'THULIR') => {
+    const { data } = await supabase.from('employees').select('emp_id').order('emp_id', { ascending: false }).limit(1)
+    const lastId = data?.[0]?.emp_id
+    if (!lastId) return `${prefix}_01`
+    const num = parseInt(lastId.split('_')[1]) || 0
+    return `${prefix}_${String(num + 1).padStart(2, '0')}`
+  },
 
   deleteEmployee: id => supabase.from('employees').delete().eq('id', id),
 
