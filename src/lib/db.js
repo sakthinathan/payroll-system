@@ -44,30 +44,38 @@ export const DB = {
     return data
   },
 
-  saveEmployee: emp => supabase.from('employees').insert({
-    id: emp.id,
-    emp_id: emp.empId,
-    name: emp.name,
-    salary: emp.salary,
-    salary_type: emp.salaryType || 'weekly',
-    identity_no: emp.identityNo,
-    joining_date: emp.joiningDate,
-    relieving_date: emp.relievingDate,
-    phone: emp.phone,
-    address: emp.address
-  }),
+  saveEmployee: async emp => {
+    const { data, error } = await supabase.from('employees').insert({
+      id: emp.id,
+      emp_id: emp.empId || null,
+      name: emp.name,
+      salary: emp.salary,
+      salary_type: emp.salaryType || 'weekly',
+      identity_no: emp.identityNo || null,
+      joining_date: emp.joiningDate || null,
+      relieving_date: emp.relievingDate || null,
+      phone: emp.phone || null,
+      address: emp.address || null
+    })
+    if (error) throw error
+    return data
+  },
 
-  updateEmployee: emp => supabase.from('employees').update({
-    name: emp.name,
-    salary: emp.salary,
-    salary_type: emp.salaryType || 'weekly',
-    emp_id: emp.empId,
-    identity_no: emp.identityNo,
-    joining_date: emp.joiningDate,
-    relieving_date: emp.relievingDate,
-    phone: emp.phone,
-    address: emp.address
-  }).eq('id', emp.id),
+  updateEmployee: async emp => {
+    const { data, error } = await supabase.from('employees').update({
+      name: emp.name,
+      salary: emp.salary,
+      salary_type: emp.salaryType || 'weekly',
+      emp_id: emp.empId || null,
+      identity_no: emp.identityNo || null,
+      joining_date: emp.joiningDate || null,
+      relieving_date: emp.relievingDate || null,
+      phone: emp.phone || null,
+      address: emp.address || null
+    }).eq('id', emp.id)
+    if (error) throw error
+    return data
+  },
 
   getNextEmpId: async (prefix = 'THULIR') => {
     const { data } = await supabase.from('employees').select('emp_id').order('emp_id', { ascending: false }).limit(1)

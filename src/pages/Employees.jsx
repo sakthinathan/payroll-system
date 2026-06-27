@@ -67,18 +67,24 @@ export default function Employees() {
     const payload = { 
       ...form, 
       id: modal.type === 'add' ? uid() : modal.emp.id,
-      name 
+      name,
+      salary
     }
 
-    if (modal.type === 'add') {
-      await DB.saveEmployee(payload)
-      toast.success('Employee added ✅')
-    } else {
-      await DB.updateEmployee(payload)
-      toast.success('Saved ✅')
+    try {
+      if (modal.type === 'add') {
+        await DB.saveEmployee(payload)
+        toast.success('Employee added ✅')
+      } else {
+        await DB.updateEmployee(payload)
+        toast.success('Saved ✅')
+      }
+      setModal(null)
+      load()
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Error saving employee')
     }
-    setModal(null)
-    load()
   }
 
   const del = async id => {
