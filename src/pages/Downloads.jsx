@@ -188,12 +188,8 @@ async function generateDetailedPDF(label, type, entries, emps, advances, shortag
 
   const tableData = entries.map((entry, i) => {
     const emp = emps.find(e => e.name === entry.name)
-    const ap = type === 'weekly' 
-      ? DB.advPending(entry.name, advances, allWeekly)
-      : DB.advPendingMonthly(entry.name, advances, allMonthly)
-    const sp = type === 'weekly'
-      ? DB.shrPending(entry.name, shortages, allWeekly)
-      : DB.shrPendingMonthly(entry.name, shortages, allMonthly)
+    const ap = DB.advPending(entry.name, advances, allWeekly, allMonthly)
+    const sp = DB.shrPending(entry.name, shortages, allWeekly, allMonthly)
     
     const salary = Math.round(type === 'weekly' 
       ? DB.weekSalary(entry, emp, wd)

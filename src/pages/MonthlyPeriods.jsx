@@ -7,14 +7,16 @@ import { Modal, Panel, Spinner } from '../components/UI'
 export function MonthlyPeriods() {
   const [periods, setPeriods]     = useState([])
   const [emps, setEmps]           = useState([])
+  const [wd, setWd]               = useState(26)
   const [loading, setLoading]     = useState(true)
   const [viewModal, setViewModal] = useState(null)
   const [viewEntries, setViewEntries] = useState([])
 
   const load = useCallback(async () => {
-    const [p, e] = await Promise.all([DB.monthlyPeriods(), DB.employees()])
+    const [p, e, w] = await Promise.all([DB.monthlyPeriods(), DB.employees(), DB.getWorkingDays()])
     setPeriods(p)
     setEmps(e.filter(emp => emp.salary_type === 'monthly'))
+    setWd(w)
     setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])
@@ -93,7 +95,7 @@ export function MonthlyPeriods() {
                       <td className="amt amt-blue">{fmt(emp?.salary || 0)}</td>
                       <td className="amt amt-red">{fmt(m.adv_deducted||0)}</td>
                       <td className="amt amt-red">{fmt(m.shr_deducted||0)}</td>
-                      <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m, emp))}</strong></td>
+                      <td className="amt amt-green"><strong>{fmt(DB.monthlySalary(m, emp, wd))}</strong></td>
                     </tr>
                   )
                 })}

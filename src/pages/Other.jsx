@@ -9,6 +9,7 @@ import { supabase } from '../lib/db'
 export function Advances() {
   const [advances, setAdvances] = useState([])
   const [weekly, setWeekly] = useState([])
+  const [monthly, setMonthly] = useState([])
   const [emps, setEmps] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -17,15 +18,15 @@ export function Advances() {
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0,10), name: '', amount: '', remarks: '' })
 
   const load = useCallback(async () => {
-    const [a, w, e] = await Promise.all([DB.advances(), DB.weekly(), DB.employees()])
-    setAdvances(a); setWeekly(w); setEmps(e); setLoading(false)
+    const [a, w, m, e] = await Promise.all([DB.advances(), DB.weekly(), DB.monthlyAll(), DB.employees()])
+    setAdvances(a); setWeekly(w); setMonthly(m); setEmps(e); setLoading(false)
     if (e.length && !form.name) setForm(f => ({ ...f, name: e[0].name }))
   }, [])
   useEffect(() => { load() }, [load])
 
   const filtered = advances.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()))
   const total = advances.reduce((s, a) => s + Number(a.amount), 0)
-  const totalPend = emps.reduce((s, e) => s + DB.advPending(e.name, advances, weekly), 0)
+  const totalPend = emps.reduce((s, e) => s + DB.advPending(e.name, advances, weekly, monthly), 0)
 
   const save = async () => {
     const amt = Number(form.amount)
@@ -56,8 +57,8 @@ export function Advances() {
             <thead><tr><th>Date</th><th>Employee</th><th>Given</th><th>Deducted</th><th>Pending</th><th>Remarks</th><th>Actions</th></tr></thead>
             <tbody>
               {filtered.map(a => {
-                const ded = DB.totalAdvDeducted(a.name, weekly)
-                const pend = DB.advPending(a.name, advances, weekly)
+                const ded = DB.totalAdvDeducted(a.name, weekly, monthly)
+                const pend = DB.advPending(a.name, advances, weekly, monthly)
                 return (
                   <tr key={a.id}>
                     <td>{fmtDate(a.date)}</td>
@@ -99,6 +100,7 @@ export function Advances() {
 export function Shortages() {
   const [shortages, setShortages] = useState([])
   const [weekly, setWeekly] = useState([])
+  const [monthly, setMonthly] = useState([])
   const [emps, setEmps] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -107,15 +109,15 @@ export function Shortages() {
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0,10), name: '', amount: '', remarks: '' })
 
   const load = useCallback(async () => {
-    const [s, w, e] = await Promise.all([DB.shortages(), DB.weekly(), DB.employees()])
-    setShortages(s); setWeekly(w); setEmps(e); setLoading(false)
+    const [s, w, m, e] = await Promise.all([DB.shortages(), DB.weekly(), DB.monthlyAll(), DB.employees()])
+    setShortages(s); setWeekly(w); setMonthly(m); setEmps(e); setLoading(false)
     if (e.length && !form.name) setForm(f => ({ ...f, name: e[0].name }))
   }, [])
   useEffect(() => { load() }, [load])
 
   const filtered = shortages.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()))
   const total = shortages.reduce((s, a) => s + Number(a.amount), 0)
-  const totalPend = emps.reduce((s, e) => s + DB.shrPending(e.name, shortages, weekly), 0)
+  const totalPend = emps.reduce((s, e) => s + DB.shrPending(e.name, shortages, weekly, monthly), 0)
 
   const save = async () => {
     const amt = Number(form.amount)
@@ -143,13 +145,13 @@ export function Shortages() {
             <thead><tr><th>Date</th><th>Employee</th><th>Amount</th><th>Deducted</th><th>Pending</th><th>Remarks</th><th>Actions</th></tr></thead>
             <tbody>
               {filtered.map(a => {
-                const pend = DB.shrPending(a.name, shortages, weekly)
+                const pend = DB.shrPending(a.name, shortages, weekly, monthly)
                 return (
                   <tr key={a.id}>
                     <td>{fmtDate(a.date)}</td>
                     <td><strong style={{ fontSize: 12 }}>{a.name}</strong></td>
                     <td className="amt amt-red">{fmt(a.amount)}</td>
-                    <td className="amt amt-red">{fmt(DB.totalShrDeducted(a.name, weekly))}</td>
+                    <td className="amt amt-red">{fmt(DB.totalShrDeducted(a.name, weekly, monthly))}</td>
                     <td className={`amt ${pend > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(pend)}</td>
                     <td style={{ fontSize: 12, color: 'var(--mid)' }}>{a.remarks || '—'}</td>
                     <td><button className="btn btn-danger btn-sm" onClick={() => setConfirm(a.id)}>🗑️</button></td>
@@ -185,12 +187,12 @@ export function Shortages() {
 export function Deductions() {
   const [data, setData] = useState(null)
   useEffect(() => {
-    Promise.all([DB.employees(), DB.advances(), DB.shortages(), DB.weekly()])
-      .then(([emps, advances, shortages, weekly]) => setData({ emps, advances, shortages, weekly }))
+    Promise.all([DB.employees(), DB.advances(), DB.shortages(), DB.weekly(), DB.monthlyAll()])
+      .then(([emps, advances, shortages, weekly, monthly]) => setData({ emps, advances, shortages, weekly, monthly }))
   }, [])
 
   if (!data) return <Layout title="📋 Deduction Master"><Spinner /></Layout>
-  const { emps, advances, shortages, weekly } = data
+  const { emps, advances, shortages, weekly, monthly } = data
 
   return (
     <Layout title="📋 Deduction Master">
@@ -203,14 +205,14 @@ export function Deductions() {
               <thead><tr><th>Employee</th><th>Given</th><th>Deducted</th><th>Pending</th></tr></thead>
               <tbody>
                 {emps.map(e => {
-                  const g = DB.totalAdvGiven(e.name, advances), d = DB.totalAdvDeducted(e.name, weekly), p = g - d
+                  const g = DB.totalAdvGiven(e.name, advances), d = DB.totalAdvDeducted(e.name, weekly, monthly), p = g - d
                   return <tr key={e.id}><td><strong style={{ fontSize: 12 }}>{e.name}</strong></td><td className="amt amt-blue">{fmt(g)}</td><td className="amt">{fmt(d)}</td><td className={`amt ${p > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(p)}</td></tr>
                 })}
                 <tr style={{ background: 'var(--navy)', color: '#fff', fontWeight: 700 }}>
                   <td>TOTAL</td>
                   <td className="amt" style={{ color: '#7dd3fc', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalAdvGiven(e.name,advances),0))}</td>
-                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalAdvDeducted(e.name,weekly),0))}</td>
-                  <td className="amt" style={{ color: '#86efac', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.advPending(e.name,advances,weekly),0))}</td>
+                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalAdvDeducted(e.name,weekly,monthly),0))}</td>
+                  <td className="amt" style={{ color: '#86efac', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.advPending(e.name,advances,weekly,monthly),0))}</td>
                 </tr>
               </tbody>
             </table>
@@ -221,14 +223,14 @@ export function Deductions() {
               <thead><tr><th>Employee</th><th>Total</th><th>Deducted</th><th>Pending</th></tr></thead>
               <tbody>
                 {emps.map(e => {
-                  const g = DB.totalShrGiven(e.name, shortages), d = DB.totalShrDeducted(e.name, weekly), p = g - d
+                  const g = DB.totalShrGiven(e.name, shortages), d = DB.totalShrDeducted(e.name, weekly, monthly), p = g - d
                   return <tr key={e.id}><td><strong style={{ fontSize: 12 }}>{e.name}</strong></td><td className="amt amt-red">{fmt(g)}</td><td className="amt">{fmt(d)}</td><td className={`amt ${p > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(p)}</td></tr>
                 })}
                 <tr style={{ background: 'var(--red)', color: '#fff', fontWeight: 700 }}>
                   <td>TOTAL</td>
                   <td className="amt" style={{ color: '#fca5a5', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalShrGiven(e.name,shortages),0))}</td>
-                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalShrDeducted(e.name,weekly),0))}</td>
-                  <td className="amt" style={{ color: '#bbf7d0', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.shrPending(e.name,shortages,weekly),0))}</td>
+                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalShrDeducted(e.name,weekly,monthly),0))}</td>
+                  <td className="amt" style={{ color: '#bbf7d0', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.shrPending(e.name,shortages,weekly,monthly),0))}</td>
                 </tr>
               </tbody>
             </table>

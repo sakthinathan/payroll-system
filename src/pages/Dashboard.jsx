@@ -28,18 +28,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      DB.employees(), DB.weekly(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod(), DB.periods()
-    ]).then(([emps, weekly, advances, shortages, wd, openP, allPeriods]) => {
-      setData({ emps, weekly, advances, shortages, wd, openP, allPeriods })
+      DB.employees(), DB.weekly(), DB.monthlyAll(), DB.advances(), DB.shortages(), DB.getWorkingDays(), DB.openPeriod(), DB.periods(), DB.monthlyPeriods()
+    ]).then(([emps, weekly, monthly, advances, shortages, wd, openP, allPeriods, monthlyPeriods]) => {
+      setData({ emps, weekly, monthly, advances, shortages, wd, openP, allPeriods, monthlyPeriods })
       setLoading(false)
     })
   }, [])
 
   const stats = useMemo(() => {
     if (!data) return null
-    const { emps, weekly, advances, shortages, wd, openP, allPeriods } = data
+    const { emps, weekly, monthly, advances, shortages, wd, openP, allPeriods, monthlyPeriods } = data
     const periodMap = {}
     allPeriods.forEach(p => periodMap[p.id] = p)
+    const mPeriodMap = {}
+    monthlyPeriods.forEach(p => mPeriodMap[p.id] = p)
     
     // 1. Map-based lookups for O(N) efficiency
     const empMap = DB.createEmpMap(emps)
@@ -49,17 +51,25 @@ export default function Dashboard() {
       const p = periodMap[w.period_id]
       return p && getFY(p.date_from) === selectedFY
     })
+    const fyMonthly = monthly.filter(m => {
+      const p = mPeriodMap[m.period_id]
+      return p && getFY(p.date_from) === selectedFY
+    })
     const fyAdvances = advances.filter(a => getFY(a.date) === selectedFY)
     const fyShortages = shortages.filter(s => getFY(s.date) === selectedFY)
 
     // 3. Efficient calculations
-    let totalWeeklyPay = 0
+    let totalPayroll = 0
     let totalAdv = 0
     let totalShr = 0
     
     fyWeekly.forEach(w => {
       const emp = empMap[w.name]
-      totalWeeklyPay += DB.weekSalary(w, emp, wd)
+      totalPayroll += DB.weekSalary(w, emp, wd)
+    })
+    fyMonthly.forEach(m => {
+      const emp = empMap[m.name]
+      totalPayroll += DB.monthlySalary(m, emp, wd)
     })
     
     fyAdvances.forEach(a => totalAdv += Number(a.amount || 0))
@@ -77,15 +87,16 @@ export default function Dashboard() {
     // Get all available FYs
     const fys = new Set()
     allPeriods.forEach(p => { const fy = getFY(p.date_from); if (fy) fys.add(fy) })
+    monthlyPeriods.forEach(p => { const fy = getFY(p.date_from); if (fy) fys.add(fy) })
     advances.forEach(a => { const fy = getFY(a.date); if (fy) fys.add(fy) })
     if (fys.size === 0) fys.add(selectedFY)
     
-    return { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs: Array.from(fys).sort().reverse() }
+    return { totalPayroll, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs: Array.from(fys).sort().reverse() }
   }, [data, selectedFY])
 
   if (loading) return <Layout title="Dashboard"><Spinner /></Layout>
 
-  const { totalWeeklyPay, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs } = stats
+  const { totalPayroll, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs } = stats
 
   return (
     <Layout title={
@@ -116,8 +127,8 @@ export default function Dashboard() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="kpi-card green">
             <div className="kpi-icon" style={{ color: 'var(--emerald)' }}><Banknote /></div>
-            <div className="kpi-label">Weekly Payroll</div>
-            <div className="kpi-value">{fmt(totalWeeklyPay)}</div>
+            <div className="kpi-label">Payroll Disbursed</div>
+            <div className="kpi-value">{fmt(totalPayroll)}</div>
             <div className="kpi-sub">Total payouts recorded</div>
           </div>
         </motion.div>

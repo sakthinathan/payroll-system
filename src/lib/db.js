@@ -271,12 +271,18 @@ export const DB = {
   // Legacy fallback (O(N^2), use sparingly)
   totalAdvGiven: (name, advances) => advances.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
   totalShrGiven: (name, shortages) => shortages.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
-  totalAdvDeducted: (name, weekly) => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.adv_deducted || 0), 0),
-  totalShrDeducted: (name, weekly) => weekly.filter(w => w.name === name).reduce((s, w) => s + Number(w.shr_deducted || 0), 0),
-  advPending: (name, adv, wkly) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeducted(name, wkly),
-  shrPending: (name, shr, wkly) => DB.totalShrGiven(name, shr) - DB.totalShrDeducted(name, wkly),
-  advPendingMonthly: (name, adv, mly) => DB.totalAdvGiven(name, adv) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.adv_deducted || 0), 0)),
-  shrPendingMonthly: (name, shr, mly) => DB.totalShrGiven(name, shr) - (mly.filter(m => m.name === name).reduce((s, m) => s + Number(m.shr_deducted || 0), 0)),
+  totalAdvDeducted: (name, weekly, monthly = []) => {
+    const w = weekly ? weekly.filter(x => x.name === name).reduce((s, x) => s + Number(x.adv_deducted || 0), 0) : 0;
+    const m = monthly ? monthly.filter(x => x.name === name).reduce((s, x) => s + Number(x.adv_deducted || 0), 0) : 0;
+    return w + m;
+  },
+  totalShrDeducted: (name, weekly, monthly = []) => {
+    const w = weekly ? weekly.filter(x => x.name === name).reduce((s, x) => s + Number(x.shr_deducted || 0), 0) : 0;
+    const m = monthly ? monthly.filter(x => x.name === name).reduce((s, x) => s + Number(x.shr_deducted || 0), 0) : 0;
+    return w + m;
+  },
+  advPending: (name, adv, wkly, mly = []) => DB.totalAdvGiven(name, adv) - DB.totalAdvDeducted(name, wkly, mly),
+  shrPending: (name, shr, wkly, mly = []) => DB.totalShrGiven(name, shr) - DB.totalShrDeducted(name, wkly, mly),
 
   // Seeding
   async seed() {
