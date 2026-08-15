@@ -29,7 +29,7 @@ function loadSheetJS() {
 }
 
 // ── BANK EXCEL GENERATOR ──────────────────────────────────────────
-async function generateBankExcel(label, entries, emps, bankList, wd) {
+async function generateBankExcel(label, type, entries, emps, bankList, wd) {
   const XLSX    = await loadSheetJS()
   const weekCode = label.replace(/\s+/g, '').toUpperCase().slice(0, 8)
   const sbiRows  = []
@@ -39,7 +39,7 @@ async function generateBankExcel(label, entries, emps, bankList, wd) {
   entries.forEach(w => {
     const emp    = emps.find(e => e.name === w.name)
     const bank   = bankList.find(b => b.name === w.name) || {}
-    const salary = Math.round(DB.weekSalary(w, emp, wd))
+    const salary = Math.round(type === 'weekly' ? DB.weekSalary(w, emp, wd) : DB.monthlySalary(w, emp, wd))
     if (!salary || !bank.acc) return
 
     const isSBI = (bank.ifsc || '').toUpperCase().startsWith(SBI_IFSC_PREFIX)
@@ -84,13 +84,13 @@ async function generateBankExcel(label, entries, emps, bankList, wd) {
 }
 
 // ── PRINT SHEET WINDOW ─────────────────────────────────────────────
-function openPrintWindow(label, entries, emps, bankList, wd) {
+function openPrintWindow(label, type, entries, emps, bankList, wd) {
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   let grandTotal = 0
   const rows = entries.map((w, i) => {
     const emp    = emps.find(e => e.name === w.name)
     const bank   = bankList.find(b => b.name === w.name) || {}
-    const salary = Math.round(DB.weekSalary(w, emp, wd))
+    const salary = Math.round(type === 'weekly' ? DB.weekSalary(w, emp, wd) : DB.monthlySalary(w, emp, wd))
     grandTotal  += salary
     return { i: i + 1, name: w.name, bank: bank.bank || '—', acc: bank.acc || '—', ifsc: bank.ifsc || '—', salary }
   })
@@ -299,7 +299,7 @@ export default function Downloads() {
     if (!entries.length) { toast.error('No entries found for this period'); return }
     setDownloading(period.id)
     try {
-      const result = await generateBankExcel(period.label, entries, emps, bankList, wd)
+      const result = await generateBankExcel(period.label, type, entries, emps, bankList, wd)
       toast.success(`Downloaded! SBI: ${result.sbiCount} | Other: ${result.otherCount}`)
     } catch (e) {
       toast.error('Failed: ' + e.message)
@@ -312,7 +312,7 @@ export default function Downloads() {
     const entries = map[period.id] || []
     if (!entries.length) { toast.error('No entries found for this period'); return }
     setPrinting(period.id)
-    openPrintWindow(period.label, entries, emps, bankList, wd)
+    openPrintWindow(period.label, type, entries, emps, bankList, wd)
     setTimeout(() => setPrinting(null), 1000)
   }
 

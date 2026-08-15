@@ -15,12 +15,12 @@ const REMITTER_NAME  = 'THULIR AGENCY'
 const REMITTER_ADDR  = 'ERODE'
 const REMITTER_EMAIL = 'sbi.12777@sbi.co.in'
 
-function downloadMonthlyBankFile(label, entries, emps, bankList) {
+function downloadMonthlyBankFile(label, entries, emps, bankList, wd) {
   const sbiRows = [], otherRows = []
   entries.forEach((m, idx) => {
     const emp    = emps.find(e => e.name === m.name)
     const bank   = bankList.find(b => b.name === m.name) || {}
-    const salary = Math.round(DB.monthlySalary(m, emp))
+    const salary = Math.round(DB.monthlySalary(m, emp, wd))
     if (!bank.acc || salary <= 0) return
     const refNo = `THULIRSAL${String(idx + 1).padStart(6, '0')}`
     if (bank.bank && bank.bank.toUpperCase() === 'SBI') {
@@ -41,12 +41,12 @@ function downloadMonthlyBankFile(label, entries, emps, bankList) {
   return { sbiCount: sbiRows.length, otherCount: otherRows.length }
 }
 
-function downloadMonthlyExcel(label, entries, emps) {
+function downloadMonthlyExcel(label, entries, emps, wd) {
   const rows = [['THULIR AGENCY — MONTHLY PAYROLL'], [label], [`Generated: ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}`], [], ['S.No','Employee Name','Gross Salary (₹)','Adv Deducted','Shr Deducted','Net Salary (₹)']]
   let total = 0
   entries.forEach((m, i) => {
     const emp = emps.find(e => e.name === m.name)
-    const net = Math.round(DB.monthlySalary(m, emp))
+    const net = Math.round(DB.monthlySalary(m, emp, wd))
     total += net
     rows.push([i+1, m.name, emp?.salary || 0, m.adv_deducted || 0, m.shr_deducted || 0, net])
   })
@@ -131,6 +131,31 @@ export function Monthly() {
     } catch (err) { toast.error('Failed') } finally { setAdding(prev => { const n = new Set(prev); n.delete(emp.name); return n }) }
   }
 
+  const bulkAdd = async () => {
+    if (!pendingEmps.length) return
+    setBulkModal(false)
+    const p = toast.loading('Adding staff...')
+    try {
+      const inserts = pendingEmps.map(emp => ({
+        id: uid(), name: emp.name, monthLabel: activePeriod.label, date: activePeriod.date_from, 
+        daysWorked: bulkForm.daysWorked, leaves: bulkForm.leaves, advDeducted: bulkForm.advDeducted, 
+        shrDeducted: bulkForm.shrDeducted, periodId: activePeriod.id
+      }))
+      await Promise.all(inserts.map(DB.saveMonthly))
+      toast.success('Added staff successfully', { id: p })
+      load()
+    } catch (err) { toast.error('Failed to add staff', { id: p }) }
+  }
+
+  const del = async (id) => {
+    try {
+      await DB.deleteMonthly(id)
+      setConfirm(null)
+      load()
+      toast.success('Deleted successfully')
+    } catch (err) { toast.error('Failed to delete') }
+  }
+
   const startPeriod = async () => {
     if (!newPeriod.dateFrom || !newPeriod.dateTo) { toast.error('Select dates'); return }
     await DB.saveMonthlyPeriod({ id:uid(), label:newPeriod.label, month_name:newPeriod.label, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' })
@@ -139,8 +164,8 @@ export function Monthly() {
 
   const closePayroll = async () => {
     await DB.closeMonthlyPeriod(activePeriod.id, totalPay)
-    downloadMonthlyExcel(activePeriod.label, [...allMonthly], [...emps])
-    setTimeout(() => downloadMonthlyBankFile(activePeriod.label, [...allMonthly], [...emps], bankList), 600)
+    downloadMonthlyExcel(activePeriod.label, [...allMonthly], [...emps], wd)
+    setTimeout(() => downloadMonthlyBankFile(activePeriod.label, [...allMonthly], [...emps], bankList, wd), 600)
     setClosedData({ label: activePeriod.label, entries: [...allMonthly], allEmps: [...emps] }); setCloseConfirm(false); setActivePeriod(null); load()
   }
 
