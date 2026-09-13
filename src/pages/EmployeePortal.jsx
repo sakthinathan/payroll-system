@@ -13,7 +13,7 @@ import {
 import { captureSnapshot, generateFaceDescriptor, compareFaceDescriptors, getAddressFromCoords, checkGeofence } from '../lib/faceAI'
 
 export default function EmployeePortal() {
-  const { currentEmployee, logout } = useAuth()
+  const { currentEmployee, updateCurrentEmployee, logout } = useAuth()
   const [logs, setLogs] = useState([])
   const [todayLog, setTodayLog] = useState(null)
   const [missingLog, setMissingLog] = useState(null)
@@ -47,6 +47,13 @@ export default function EmployeePortal() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Auto-bind media stream to video element when DOM mounts
+  useEffect(() => {
+    if (cameraActive && videoRef.current && mediaStreamRef.current) {
+      videoRef.current.srcObject = mediaStreamRef.current
+    }
+  }, [cameraActive])
 
   // Load Employee Attendance History & Payslips
   const loadData = async () => {
@@ -223,8 +230,12 @@ export default function EmployeePortal() {
           faceDescriptor: liveDescriptor 
         }
 
-        // Save to localStorage immediately so employee session is updated
-        localStorage.setItem('thulir_current_employee', JSON.stringify(updatedEmpData))
+        // Save to Auth context and localStorage immediately
+        if (updateCurrentEmployee) {
+          updateCurrentEmployee(updatedEmpData)
+        } else {
+          localStorage.setItem('thulir_current_employee', JSON.stringify(updatedEmpData))
+        }
         
         // Attempt DB update in background / catch transient errors
         try {
@@ -233,9 +244,6 @@ export default function EmployeePortal() {
           console.warn('DB face profile sync warning:', dbErr)
         }
 
-        // Update in-memory current employee state object
-        Object.assign(currentEmployee, updatedEmpData)
-        
         setFaceStatus('success')
         toast.success('🎉 Face Profile Registered Successfully! You can now check in.')
         setTimeout(() => {
@@ -323,7 +331,12 @@ export default function EmployeePortal() {
     loadData()
   }
 
-  const isFaceRegistered = !!(currentEmployee?.profile_photo || currentEmployee?.face_descriptor)
+  const isFaceRegistered = !!(
+    currentEmployee?.profile_photo || 
+    currentEmployee?.profilePhoto || 
+    currentEmployee?.face_descriptor || 
+    currentEmployee?.faceDescriptor
+  )
 
   return (
     <Layout title="Employee Portal">

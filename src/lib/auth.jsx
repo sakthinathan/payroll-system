@@ -82,6 +82,12 @@ export function AuthProvider({ children }) {
     return emp
   }
 
+  const updateCurrentEmployee = (empData) => {
+    const updated = { ...currentEmployee, ...empData }
+    setCurrentEmployee(updated)
+    localStorage.setItem('thulir_current_employee', JSON.stringify(updated))
+  }
+
   const logout = async () => {
     try { await supabase.auth.signOut() } catch (e) {}
     setUser(null)
@@ -91,7 +97,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, role, currentEmployee, login, loginAsEmployee, logout, loading }}>
+    <AuthCtx.Provider value={{ user, role, currentEmployee, login, loginAsEmployee, updateCurrentEmployee, logout, loading }}>
       {children}
     </AuthCtx.Provider>
   )

@@ -7,13 +7,18 @@ export function captureSnapshot(videoElement) {
   canvas.height = 320
   const ctx = canvas.getContext('2d')
   
-  // Crop center square
-  const minDim = Math.min(videoElement.videoWidth, videoElement.videoHeight)
-  const startX = (videoElement.videoWidth - minDim) / 2
-  const startY = (videoElement.videoHeight - minDim) / 2
+  const vWidth = videoElement.videoWidth || 640
+  const vHeight = videoElement.videoHeight || 640
+  const minDim = Math.min(vWidth, vHeight)
+  const startX = (vWidth - minDim) / 2
+  const startY = (vHeight - minDim) / 2
   
-  ctx.drawImage(videoElement, startX, startY, minDim, minDim, 0, 0, 320, 320)
-  return canvas.toDataURL('image/jpeg', 0.75) // Compressed ~30KB JPEG
+  try {
+    ctx.drawImage(videoElement, startX, startY, minDim, minDim, 0, 0, 320, 320)
+  } catch (e) {
+    ctx.drawImage(videoElement, 0, 0, 320, 320)
+  }
+  return canvas.toDataURL('image/jpeg', 0.8) // Compressed JPEG
 }
 
 // Generate facial descriptor vector (normalized feature hash)
