@@ -103,9 +103,25 @@ export function validateSnapshotImage(imageDataUrl) {
   })
 }
 
+// Helper to safely parse array or JSON string descriptors
+export function parseFaceDescriptor(desc) {
+  if (!desc) return null
+  if (Array.isArray(desc)) return desc
+  if (typeof desc === 'string') {
+    try {
+      const parsed = JSON.parse(desc)
+      if (Array.isArray(parsed)) return parsed
+    } catch (e) {}
+  }
+  return null
+}
+
 // Compare live selfie descriptor vs stored reference descriptor
-export function compareFaceDescriptors(desc1, desc2) {
-  if (!desc1 || !Array.isArray(desc1)) {
+export function compareFaceDescriptors(desc1Raw, desc2Raw) {
+  const desc1 = parseFaceDescriptor(desc1Raw)
+  const desc2 = parseFaceDescriptor(desc2Raw)
+
+  if (!desc1 || !Array.isArray(desc1) || desc1.length === 0) {
     return { score: 0, distance: '1.000', verified: false, reason: 'No live face captured' }
   }
 
@@ -125,7 +141,7 @@ export function compareFaceDescriptors(desc1, desc2) {
   // Calculate match percentage score (0% to 100%)
   // Distance 0.0 -> 100% Match; Distance 0.25 -> 50% Match; Distance 0.5+ -> 0% Match
   const confidence = Math.max(0, Math.min(100, Math.round((1 - distance * 2.0) * 100)))
-  const verified = confidence >= 65
+  const verified = confidence >= 60
 
   return {
     score: confidence,

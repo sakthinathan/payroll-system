@@ -74,18 +74,46 @@ export function AuthProvider({ children }) {
       throw new Error('Incorrect PIN code. Default PIN is 1234.')
     }
 
+    // Restore local face registration if present in persistent localStorage
+    const faceKey = `thulir_face_${emp.id}`
+    const savedFace = localStorage.getItem(faceKey)
+    let photo = emp.profile_photo || emp.profilePhoto
+    let desc = emp.face_descriptor || emp.faceDescriptor
+
+    if (!photo && savedFace) {
+      try {
+        const parsed = JSON.parse(savedFace)
+        photo = parsed.photo
+        desc = parsed.descriptor
+      } catch (e) {}
+    }
+
+    const fullEmp = {
+      ...emp,
+      profile_photo: photo || null,
+      profilePhoto: photo || null,
+      face_descriptor: desc || null,
+      faceDescriptor: desc || null
+    }
+
     const empUser = { email: `${emp.emp_id || 'emp'}@thuliragency.com`, id: emp.id, name: emp.name }
     setUser(empUser)
     setRole('employee')
-    setCurrentEmployee(emp)
-    localStorage.setItem('thulir_current_employee', JSON.stringify(emp))
-    return emp
+    setCurrentEmployee(fullEmp)
+    localStorage.setItem('thulir_current_employee', JSON.stringify(fullEmp))
+    return fullEmp
   }
 
   const updateCurrentEmployee = (empData) => {
     const updated = { ...currentEmployee, ...empData }
     setCurrentEmployee(updated)
     localStorage.setItem('thulir_current_employee', JSON.stringify(updated))
+    if (updated.id && (updated.profile_photo || updated.profilePhoto)) {
+      localStorage.setItem(`thulir_face_${updated.id}`, JSON.stringify({
+        photo: updated.profile_photo || updated.profilePhoto,
+        descriptor: updated.face_descriptor || updated.faceDescriptor
+      }))
+    }
   }
 
   const logout = async () => {
