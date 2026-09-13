@@ -494,20 +494,21 @@ export function Weekly() {
 
   return (
     <Layout title="Weekly Payroll Entry">
-      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow)' }}>
+      <div style={{ background: '#FFFFFF', border: '2px solid var(--border)', borderRadius: 24, padding: '32px', marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20, boxShadow: 'var(--shadow)' }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--blue)', letterSpacing: 1.5 }}>Active Processing Period</div>
-          <div style={{ fontSize: 28, fontWeight: 800, margin: '4px 0', color: 'var(--navy)' }}>{activePeriod.label}</div>
-          <div style={{ color: 'var(--slate)', opacity: 0.7, fontSize: 14, fontWeight: 500 }}>{allWeekly.length} / {weeklyOnlyEmps.length} Employees Entered</div>
+          <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', color: 'var(--brit-red)', letterSpacing: 1.5 }}>Active Processing Period</div>
+          <div style={{ fontSize: 28, fontWeight: 900, margin: '4px 0', color: 'var(--navy)' }}>{activePeriod.label}</div>
+          <div style={{ color: 'var(--slate)', fontSize: 14, fontWeight: 600 }}>{allWeekly.length} / {weeklyOnlyEmps.length} Employees Entered</div>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'var(--grey)', color: 'var(--navy)', border: 'none' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Action</button>}
-          <button className="btn" style={{ background: 'var(--rose-light)', color: 'var(--rose)', border: 'none' }} onClick={() => setCloseConfirm(true)}><Lock size={16}/> Close & Download</button>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {pendingEmps.length > 0 && <button className="btn" style={{ background: 'var(--brit-cream-light)', color: 'var(--navy)', border: '2px solid var(--border)' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Action</button>}
+          <button className="btn btn-primary" onClick={() => setCloseConfirm(true)}><Lock size={16}/> Close & Download</button>
         </div>
       </div>
 
       <div style={{ position: 'relative', marginBottom: 24 }}>
-        <input placeholder="Quick search staff..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '16px 20px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontWeight: 600 }} />
+        <Search size={18} style={{ position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)', color: 'var(--brit-red)' }} />
+        <input placeholder="Quick search staff..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: 9999, border: '2px solid var(--border)', background: '#FFFFFF', outline: 'none', fontWeight: 700, fontSize: 14, color: 'var(--navy)' }} />
       </div>
 
       <Panel noPad subtitle="Tip: Click any dashed box to edit values instantly">

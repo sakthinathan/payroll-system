@@ -98,26 +98,25 @@ export default function Employees() {
 
   return (
     <Layout title="Staff Directory">
-      {/* Modern Working Days Control (Zoho Style) */}
+      {/* Modern Working Days Control */}
       <Panel title="Payroll Configuration" subtitle="Global working days setting for rate calculation">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ background: 'var(--blue-light)', color: 'var(--blue)', width: 64, height: 64, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: 'var(--brit-red-light)', color: 'var(--brit-red)', width: 64, height: 64, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(227,30,36,0.15)' }}>
               <Calendar size={32} />
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--slate)', opacity: 0.6, textTransform: 'uppercase', letterSpacing: 1 }}>Current Period</div>
-              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--navy)', letterSpacing: -1 }}>{wd} Working Days</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 1 }}>Current Period</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--navy)', letterSpacing: -1 }}>{wd} Working Days</div>
             </div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--grey)', padding: '12px 16px', borderRadius: 16, border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--slate)' }}>Change to:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--brit-cream-light)', padding: '12px 20px', borderRadius: 9999, border: '2px solid var(--border)' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>Change to:</span>
             <input type="number" min={1} max={31} value={wdInput}
               onChange={e => setWdInput(Number(e.target.value))}
-              className="form-input"
-              style={{ width: 80, height: 40, textAlign: 'center', borderRadius: 10 }} />
-            <button className="btn btn-blue" style={{ height: 40, padding: '0 20px', borderRadius: 10 }} onClick={async () => {
+              style={{ width: 80, height: 42, textAlign: 'center', borderRadius: 9999, border: '2px solid var(--border)', background: '#fff', fontSize: 15, fontWeight: 800, color: 'var(--navy)', outline: 'none' }} />
+            <button className="btn btn-primary" style={{ height: 42, padding: '0 24px' }} onClick={async () => {
               await DB.setWorkingDays(wdInput)
               setWd(wdInput)
               toast.success(`Working days updated to ${wdInput}`)
@@ -126,8 +125,8 @@ export default function Employees() {
         </div>
       </Panel>
 
-      {/* Tabs (Zoho Style) */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24, gap: 32 }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: 24, gap: 32 }}>
         {[
           { id: 'weekly', label: 'Weekly Employees', count: weeklyList.length },
           { id: 'monthly', label: 'Monthly Employees', count: monthlyList.length }
@@ -136,31 +135,31 @@ export default function Employees() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{ 
-              padding: '16px 4px', background: 'none', border: 'none', cursor: 'pointer',
-              color: activeTab === tab.id ? 'var(--blue)' : 'var(--slate)',
-              borderBottom: activeTab === tab.id ? '2px solid var(--blue)' : '2px solid transparent',
-              fontSize: 14, fontWeight: 700, transition: 'all 0.2s',
-              display: 'flex', alignItems: 'center', gap: 8
+              padding: '16px 8px', background: 'none', border: 'none', cursor: 'pointer',
+              color: activeTab === tab.id ? 'var(--brit-red)' : 'var(--slate)',
+              borderBottom: activeTab === tab.id ? '3px solid var(--brit-red)' : '3px solid transparent',
+              fontSize: 15, fontWeight: 900, transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 10
             }}
           >
             {tab.label}
-            <span style={{ fontSize: 11, background: activeTab === tab.id ? 'var(--blue)' : 'var(--border)', color: activeTab === tab.id ? '#fff' : 'var(--slate)', padding: '2px 8px', borderRadius: 10 }}>{tab.count}</span>
+            <span style={{ fontSize: 12, background: activeTab === tab.id ? 'var(--brit-red)' : '#E5DDC2', color: activeTab === tab.id ? '#fff' : 'var(--navy)', padding: '3px 10px', borderRadius: 9999, fontWeight: 800 }}>{tab.count}</span>
           </button>
         ))}
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
-          <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--slate)', opacity: 0.4 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, maxWidth: 440 }}>
+          <Search size={18} style={{ position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)', color: 'var(--brit-red)' }} />
           <input 
             placeholder={`Search by name or ID...`} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            style={{ width: '100%', padding: '14px 14px 14px 48px', borderRadius: 16, border: '1px solid var(--border)', background: '#fff', outline: 'none', fontSize: 14, fontWeight: 500 }}
+            style={{ width: '100%', padding: '14px 20px 14px 50px', borderRadius: 9999, border: '2px solid var(--border)', background: '#FFFFFF', outline: 'none', fontSize: 14, fontWeight: 700, color: 'var(--navy)' }}
           />
         </div>
-        <button className="btn btn-blue" onClick={openAdd} style={{ padding: '14px 24px' }}>
+        <button className="btn btn-primary" onClick={openAdd} style={{ padding: '14px 28px' }}>
           <UserPlus size={18} />
           <span>Add New Employee</span>
         </button>
