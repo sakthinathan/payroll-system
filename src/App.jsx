@@ -49,6 +49,7 @@ function AppRoutes() {
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
       <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />
+      <Route path="/my-face" element={<Protected><EmployeePortal defaultTab="face" /></Protected>} />
       <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
       <Route path="/employees" element={<Protected><Employees /></Protected>} />
       <Route path="/weekly" element={<Protected><Weekly /></Protected>} />

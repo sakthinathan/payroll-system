@@ -33,6 +33,7 @@ export function Layout({ children, title }) {
     { section: 'Self-Service', items: [
       { path: '/my-attendance', label: 'My Attendance & Punch', icon: <UserCheck size={18} /> },
       { path: '/my-payslips', label: 'My Payslips (View Only)', icon: <FileText size={18} /> },
+      { path: '/my-face', label: 'Registered Face Profile', icon: <Camera size={18} /> },
     ]}
   ] : [
     { section: 'Overview', items: [

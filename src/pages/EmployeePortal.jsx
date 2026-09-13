@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import { 
   Camera, MapPin, CheckCircle2, Clock, 
   AlertTriangle, LogOut, UserCheck, ShieldCheck, 
-  Calendar, FileText, Download, Sparkles, Eye, Printer, Landmark
+  Calendar, FileText, Download, Sparkles, Eye, Printer, Landmark, Trash2, RefreshCw
 } from 'lucide-react'
 import { 
   captureSnapshot, 
@@ -29,7 +29,7 @@ export default function EmployeePortal({ defaultTab }) {
   const [loading, setLoading] = useState(true)
   
   // Navigation & Payslips States
-  const initialTab = defaultTab || (location.pathname === '/my-payslips' ? 'payslips' : 'attendance')
+  const initialTab = defaultTab || (location.pathname === '/my-payslips' ? 'payslips' : location.pathname === '/my-face' ? 'face' : 'attendance')
   const [activeTab, setActiveTab] = useState(initialTab)
 
   useEffect(() => {
@@ -37,6 +37,8 @@ export default function EmployeePortal({ defaultTab }) {
       setActiveTab(defaultTab)
     } else if (location.pathname === '/my-payslips') {
       setActiveTab('payslips')
+    } else if (location.pathname === '/my-face') {
+      setActiveTab('face')
     } else if (location.pathname === '/my-attendance') {
       setActiveTab('attendance')
     }
@@ -369,6 +371,46 @@ export default function EmployeePortal({ defaultTab }) {
     loadData()
   }
 
+  // Handle Delete Face Profile
+  const deleteFaceProfile = async () => {
+    if (!currentEmployee) return
+    if (!window.confirm('Are you sure you want to delete your registered face profile photo? You will need to take a new 1-time setup selfie photo before making your next daily check-in.')) {
+      return
+    }
+
+    try {
+      const resetEmp = {
+        ...currentEmployee,
+        profile_photo: null,
+        profilePhoto: null,
+        face_descriptor: null,
+        faceDescriptor: null
+      }
+
+      if (currentEmployee.id) {
+        localStorage.removeItem(`thulir_face_${currentEmployee.id}`)
+      }
+      
+      if (updateCurrentEmployee) {
+        updateCurrentEmployee(resetEmp)
+      } else {
+        localStorage.setItem('thulir_current_employee', JSON.stringify(resetEmp))
+      }
+
+      try {
+        await DB.updateEmployee(resetEmp)
+      } catch (dbErr) {
+        console.warn('DB face profile delete sync warning:', dbErr)
+      }
+
+      toast.success('Face profile photo deleted. You can now register a new face photo.')
+      loadData()
+    } catch (err) {
+      console.error('Delete face profile error:', err)
+      toast.error('Failed to delete face profile. Please try again.')
+    }
+  }
+
   const isFaceRegistered = !!(
     currentEmployee?.profile_photo || 
     currentEmployee?.profilePhoto || 
@@ -422,7 +464,7 @@ export default function EmployeePortal({ defaultTab }) {
       )}
 
       {/* ── SECTION TAB SELECTOR ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '2px solid var(--border)', paddingBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '2px solid var(--border)', paddingBottom: 16, flexWrap: 'wrap' }}>
         <button 
           className={`btn ${activeTab === 'attendance' ? 'btn-primary' : ''}`}
           style={{
@@ -457,6 +499,24 @@ export default function EmployeePortal({ defaultTab }) {
         >
           <FileText size={18} />
           <span>My Payslips ({payslips.length}) • View Only</span>
+        </button>
+
+        <button 
+          className={`btn ${activeTab === 'face' ? 'btn-primary' : ''}`}
+          style={{
+            padding: '12px 24px',
+            fontSize: 14,
+            fontWeight: 800,
+            borderRadius: 9999,
+            background: activeTab === 'face' ? 'var(--brit-red)' : '#FFFFFF',
+            color: activeTab === 'face' ? '#FFFFFF' : 'var(--navy)',
+            border: '2px solid var(--border)',
+            boxShadow: activeTab === 'face' ? '0 4px 15px rgba(227,30,36,0.3)' : 'none'
+          }}
+          onClick={() => setActiveTab('face')}
+        >
+          <Camera size={18} />
+          <span>Registered Face Profile</span>
         </button>
       </div>
 
@@ -719,6 +779,96 @@ export default function EmployeePortal({ defaultTab }) {
                 )}
               </tbody>
             </table>
+          </div>
+        </Panel>
+      )}
+
+      {/* ── TAB 3: REGISTERED FACE PROFILE ── */}
+      {activeTab === 'face' && (
+        <Panel title="Registered Face Profile" subtitle="View, update, or delete your reference 1-time AI selfie photo">
+          <div style={{ background: '#FFFFFF', border: '2px solid var(--border)', borderRadius: 24, padding: 32 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Left Photo Display */}
+              <div style={{ textAlign: 'center' }}>
+                {(currentEmployee?.profile_photo || currentEmployee?.profilePhoto) ? (
+                  <img 
+                    src={currentEmployee.profile_photo || currentEmployee.profilePhoto} 
+                    alt="Registered Face" 
+                    style={{ 
+                      width: 180, 
+                      height: 180, 
+                      borderRadius: 9999, 
+                      objectFit: 'cover', 
+                      border: '4px solid var(--brit-gold)', 
+                      boxShadow: '0 12px 35px rgba(227,30,36,0.35)',
+                      margin: '0 auto 16px'
+                    }} 
+                  />
+                ) : (
+                  <div 
+                    style={{ 
+                      width: 160, 
+                      height: 160, 
+                      borderRadius: 9999, 
+                      background: 'var(--brit-cream-light)', 
+                      border: '3px dashed var(--border)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: 'var(--slate)', 
+                      margin: '0 auto 16px' 
+                    }}
+                  >
+                    <Camera size={48} />
+                  </div>
+                )}
+
+                <div>
+                  {isFaceRegistered ? (
+                    <span className="badge badge-green" style={{ fontSize: 12, padding: '6px 14px' }}>🟢 Verified Active Profile</span>
+                  ) : (
+                    <span className="badge badge-red" style={{ fontSize: 12, padding: '6px 14px' }}>🔴 Registration Pending</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Profile Info & Actions */}
+              <div>
+                <h3 style={{ fontSize: 22, fontWeight: 900, color: 'var(--navy)', marginBottom: 4 }}>{empName}</h3>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>
+                  Staff ID: {currentEmployee?.emp_id || 'STAFF'}
+                </div>
+
+                <p style={{ fontSize: 13, color: 'var(--slate)', fontWeight: 600, lineHeight: 1.6, marginBottom: 24, maxWidth: 540 }}>
+                  This reference photo is used by the AI Facial Analysis Engine to verify your identity during daily check-in and check-out selfie snaps.
+                </p>
+
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ padding: '14px 28px', fontSize: 14 }}
+                    onClick={() => {
+                      setActiveTab('attendance')
+                      startCamera('register')
+                    }}
+                  >
+                    <RefreshCw size={18} />
+                    <span>{isFaceRegistered ? 'Re-Register / Update Face Photo' : 'Register Face Photo Now'}</span>
+                  </button>
+
+                  {isFaceRegistered && (
+                    <button 
+                      className="btn" 
+                      style={{ background: '#FFF0F0', color: 'var(--brit-red)', border: '2px solid #F8B4B4', padding: '14px 24px', fontSize: 14 }}
+                      onClick={deleteFaceProfile}
+                    >
+                      <Trash2 size={18} />
+                      <span>Delete Face Profile</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </Panel>
       )}
