@@ -70,11 +70,14 @@ export default function EmployeePortal() {
     loadData()
   }, [currentEmployee])
 
+  const [faceStatus, setFaceStatus] = useState('idle') // 'idle' | 'verifying' | 'success' | 'error'
+
   // Start Camera
   const startCamera = async (type) => {
     setActionType(type)
     setCameraActive(true)
     setVerifying(false)
+    setFaceStatus('idle')
 
     // Request GPS location simultaneously
     if (navigator.geolocation) {
@@ -115,18 +118,21 @@ export default function EmployeePortal() {
       mediaStreamRef.current = null
     }
     setCameraActive(false)
+    setFaceStatus('idle')
   }
 
   // Handle Punch (Check-In or Check-Out or Register)
   const handlePunch = async () => {
     if (!videoRef.current) return
     setVerifying(true)
+    setFaceStatus('verifying')
 
     // 1. Capture live camera snapshot
     const photoBase64 = captureSnapshot(videoRef.current)
     if (!photoBase64) {
       toast.error('Snapshot failed. Please try again.')
       setVerifying(false)
+      setFaceStatus('error')
       return
     }
 
@@ -143,15 +149,20 @@ export default function EmployeePortal() {
         }
         await DB.updateEmployee(updatedEmp)
         localStorage.setItem('thulir_current_employee', JSON.stringify({ ...currentEmployee, profile_photo: photoBase64, face_descriptor: liveDescriptor }))
+        
+        setFaceStatus('success')
         toast.success('🎉 Face Profile Registered Successfully! You can now check in.')
-        stopCamera()
-        setVerifying(false)
-        loadData()
+        setTimeout(() => {
+          stopCamera()
+          setVerifying(false)
+          loadData()
+        }, 1200)
         return
       } catch (err) {
         console.error('Face registration error:', err)
         toast.error('Failed to register face profile. Please try again.')
         setVerifying(false)
+        setFaceStatus('error')
         return
       }
     }
@@ -180,12 +191,13 @@ export default function EmployeePortal() {
         face_score: match.score,
         face_verified: match.verified,
         geofence_valid: isStoreLocation,
-        status: 'pending', // Pending Admin approval
+        status: 'pending',
         hours_worked: 0,
         created_at: new Date().toISOString()
       }
 
       await DB.saveAttendanceLog(newLog)
+      setFaceStatus('success')
       toast.success(`Check-In Recorded! AI Face Match: ${match.score}% 🟢`)
     } else {
       // Check-Out
@@ -194,16 +206,19 @@ export default function EmployeePortal() {
         check_out_time: timeString,
         check_out_photo: photoBase64,
         status: todayLog?.status === 'approved' ? 'approved' : 'pending',
-        hours_worked: 8.5 // Standard default shift
+        hours_worked: 8.5
       }
 
       await DB.saveAttendanceLog(updatedLog)
+      setFaceStatus('success')
       toast.success('Check-Out Recorded Successfully! 👋')
     }
 
-    stopCamera()
-    setVerifying(false)
-    loadData()
+    setTimeout(() => {
+      stopCamera()
+      setVerifying(false)
+      loadData()
+    }, 1200)
   }
 
   // Handle Missing Checkout Resolution
@@ -340,14 +355,44 @@ export default function EmployeePortal() {
             </div>
           </div>
         ) : (
-          /* ── CAMERA PREVIEW UI ── */
-          <div style={{ background: '#111', border: '3px solid var(--brit-red)', borderRadius: 24, padding: 24, textAlign: 'center', color: '#fff', position: 'relative' }}>
-            <div style={{ position: 'relative', width: 280, height: 280, margin: '0 auto 20px', borderRadius: 9999, overflow: 'hidden', border: '4px solid var(--brit-gold)', boxShadow: '0 0 0 8px rgba(227,30,36,0.3)' }}>
+          /* ── CAMERA PREVIEW UI WITH DYNAMIC GREEN CIRCLE ── */
+          <div style={{ background: '#111', border: `3px solid ${faceStatus === 'success' ? '#22C55E' : 'var(--brit-red)'}`, borderRadius: 24, padding: 24, textAlign: 'center', color: '#fff', position: 'relative', transition: 'all 0.3s ease' }}>
+            <div 
+              style={{ 
+                position: 'relative', 
+                width: 280, 
+                height: 280, 
+                margin: '0 auto 20px', 
+                borderRadius: 9999, 
+                overflow: 'hidden', 
+                border: `5px solid ${faceStatus === 'success' ? '#22C55E' : faceStatus === 'verifying' ? 'var(--brit-gold)' : 'var(--brit-gold)'}`, 
+                boxShadow: faceStatus === 'success' ? '0 0 0 12px rgba(34, 197, 94, 0.4), 0 0 30px rgba(34, 197, 94, 0.6)' : '0 0 0 8px rgba(227,30,36,0.3)',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-              <div style={{ position: 'absolute', inset: 0, border: '3px dashed var(--brit-gold)', borderRadius: 9999, pointerEvents: 'none' }} />
+              <div 
+                style={{ 
+                  position: 'absolute', 
+                  inset: 0, 
+                  border: `3px dashed ${faceStatus === 'success' ? '#22C55E' : 'var(--brit-gold)'}`, 
+                  borderRadius: 9999, 
+                  pointerEvents: 'none',
+                  transition: 'all 0.3s ease'
+                }} 
+              />
+
+              {faceStatus === 'success' && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(34, 197, 94, 0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>
+                  <div style={{ width: 64, height: 64, background: '#22C55E', color: '#fff', borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 25px rgba(34, 197, 94, 0.6)' }}>
+                    <CheckCircle2 size={40} />
+                  </div>
+                  <span style={{ marginTop: 12, fontSize: 16, fontWeight: 900, color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>FACE VERIFIED! 🟢</span>
+                </div>
+              )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--brit-gold)', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: faceStatus === 'success' ? '#22C55E' : 'var(--brit-gold)', marginBottom: 20 }}>
               <MapPin size={16} />
               <span>{locationData?.address || 'Detecting GPS location...'}</span>
             </div>
@@ -356,9 +401,20 @@ export default function EmployeePortal() {
               <button className="btn" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }} onClick={stopCamera}>
                 Cancel
               </button>
-              <button className="btn btn-primary" style={{ padding: '14px 32px' }} disabled={verifying} onClick={handlePunch}>
+              <button 
+                className="btn" 
+                style={{ 
+                  background: faceStatus === 'success' ? '#22C55E' : 'var(--brit-red)', 
+                  color: '#fff', 
+                  padding: '14px 32px',
+                  borderRadius: 9999,
+                  boxShadow: faceStatus === 'success' ? '0 8px 25px rgba(34, 197, 94, 0.5)' : '0 8px 25px rgba(227, 30, 36, 0.4)'
+                }} 
+                disabled={verifying} 
+                onClick={handlePunch}
+              >
                 <ShieldCheck size={18} />
-                <span>{verifying ? 'Processing...' : actionType === 'register' ? 'Snap & Register Face' : actionType === 'in' ? 'Snap & Check In' : 'Snap & Check Out'}</span>
+                <span>{faceStatus === 'success' ? 'Verified ✅' : verifying ? 'Verifying AI Face...' : actionType === 'register' ? 'Snap & Register Face' : actionType === 'in' ? 'Snap & Check In' : 'Snap & Check Out'}</span>
               </button>
             </div>
           </div>
