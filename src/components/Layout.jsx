@@ -175,24 +175,28 @@ export function Layout({ children, title }) {
                         onClick={() => { setProfileMenuOpen(false); setActiveModal('profile') }}
                       >
                         <User size={16} color="var(--brit-red)" />
-                        <span>Profile</span>
+                        <span>{role === 'employee' ? 'My Profile' : 'Profile'}</span>
                       </button>
 
-                      <button 
-                        className="popover-item"
-                        onClick={() => { setProfileMenuOpen(false); setActiveModal('settings') }}
-                      >
-                        <Settings size={16} color="var(--brit-red)" />
-                        <span>Settings</span>
-                      </button>
+                      {role !== 'employee' && (
+                        <button 
+                          className="popover-item"
+                          onClick={() => { setProfileMenuOpen(false); setActiveModal('settings') }}
+                        >
+                          <Settings size={16} color="var(--brit-red)" />
+                          <span>Settings</span>
+                        </button>
+                      )}
 
-                      <button 
-                        className="popover-item"
-                        onClick={() => { setProfileMenuOpen(false); navigate('/changepw') }}
-                      >
-                        <Key size={16} color="var(--brit-red)" />
-                        <span>Change Password</span>
-                      </button>
+                      {role !== 'employee' && (
+                        <button 
+                          className="popover-item"
+                          onClick={() => { setProfileMenuOpen(false); navigate('/changepw') }}
+                        >
+                          <Key size={16} color="var(--brit-red)" />
+                          <span>Change Password</span>
+                        </button>
+                      )}
 
                       <button 
                         className="popover-item"
@@ -239,33 +243,75 @@ export function Layout({ children, title }) {
 
       {/* ── MODALS FOR PROFILE, SETTINGS, ABOUT ── */}
       {activeModal === 'profile' && (
-        <Modal title="Admin Profile" onClose={() => setActiveModal(null)} saveLabel="Close" onSave={() => setActiveModal(null)}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', fontSize: 28, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '3px solid var(--brit-gold)', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
-              {user?.email?.[0].toUpperCase() || 'A'}
+        role === 'employee' ? (
+          <Modal title="My Employee Profile" onClose={() => setActiveModal(null)} saveLabel="Close" onSave={() => setActiveModal(null)}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              {currentEmployee?.profile_photo ? (
+                <img src={currentEmployee.profile_photo} alt="Profile" style={{ width: 80, height: 80, borderRadius: 9999, objectFit: 'cover', margin: '0 auto 16px', border: '3px solid var(--brit-gold)', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }} />
+              ) : (
+                <div style={{ width: 72, height: 72, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', fontSize: 28, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '3px solid var(--brit-gold)', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
+                  {currentEmployee?.name?.[0]?.toUpperCase() || 'E'}
+                </div>
+              )}
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: 'var(--navy)' }}>{currentEmployee?.name}</h3>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--brit-red)' }}>{currentEmployee?.emp_id || 'STAFF ID'}</p>
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 900, color: 'var(--navy)' }}>System Administrator</h3>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--brit-red)' }}>{user?.email || 'admin@thuliragency.com'}</p>
-          </div>
-          <div style={{ background: 'var(--brit-cream-light)', borderRadius: 16, padding: 20, border: '1px solid var(--border)', display: 'grid', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Role</span>
-              <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Super Admin</span>
+            <div style={{ background: 'var(--brit-cream-light)', borderRadius: 16, padding: 20, border: '1px solid var(--border)', display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Role</span>
+                <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Agency Staff Member</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Phone Number</span>
+                <span style={{ fontWeight: 800, color: 'var(--navy)' }}>{currentEmployee?.phone || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Salary Cycle</span>
+                <span className="badge badge-blue">{currentEmployee?.salary_type === 'monthly' ? 'Monthly Staff' : 'Weekly Staff'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Base Rate / Salary</span>
+                <span style={{ fontWeight: 900, color: 'var(--brit-green)', fontFamily: 'var(--mono)' }}>₹{Number(currentEmployee?.salary || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Identity / Account No</span>
+                <span style={{ fontWeight: 800, color: 'var(--navy)' }}>{currentEmployee?.identity_no || 'Verified Account'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Status</span>
+                <span className="badge badge-green">Active Employee</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Agency</span>
-              <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Thulir Agency</span>
+          </Modal>
+        ) : (
+          <Modal title="Admin Profile" onClose={() => setActiveModal(null)} saveLabel="Close" onSave={() => setActiveModal(null)}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ width: 72, height: 72, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', fontSize: 28, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '3px solid var(--brit-gold)', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
+                {user?.email?.[0].toUpperCase() || 'A'}
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: 'var(--navy)' }}>System Administrator</h3>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--brit-red)' }}>{user?.email || 'admin@thuliragency.com'}</p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Theme Edition</span>
-              <span className="badge badge-red">Britannia FMCG Red</span>
+            <div style={{ background: 'var(--brit-cream-light)', borderRadius: 16, padding: 20, border: '1px solid var(--border)', display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Role</span>
+                <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Super Admin</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Agency</span>
+                <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Thulir Agency</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Theme Edition</span>
+                <span className="badge badge-red">Britannia FMCG Red</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Status</span>
+                <span className="badge badge-green">Active Session</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Status</span>
-              <span className="badge badge-green">Active Session</span>
-            </div>
-          </div>
-        </Modal>
+          </Modal>
+        )
       )}
 
       {activeModal === 'settings' && (
