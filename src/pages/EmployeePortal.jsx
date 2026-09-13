@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
@@ -19,7 +20,8 @@ import {
   checkGeofence 
 } from '../lib/faceAI'
 
-export default function EmployeePortal() {
+export default function EmployeePortal({ defaultTab }) {
+  const location = useLocation()
   const { currentEmployee, updateCurrentEmployee, logout } = useAuth()
   const [logs, setLogs] = useState([])
   const [todayLog, setTodayLog] = useState(null)
@@ -27,7 +29,18 @@ export default function EmployeePortal() {
   const [loading, setLoading] = useState(true)
   
   // Navigation & Payslips States
-  const [activeTab, setActiveTab] = useState('attendance') // 'attendance' | 'payslips'
+  const initialTab = defaultTab || (location.pathname === '/my-payslips' ? 'payslips' : 'attendance')
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab)
+    } else if (location.pathname === '/my-payslips') {
+      setActiveTab('payslips')
+    } else if (location.pathname === '/my-attendance') {
+      setActiveTab('attendance')
+    }
+  }, [defaultTab, location.pathname])
   const [payslips, setPayslips] = useState([])
   const [selectedPayslip, setSelectedPayslip] = useState(null)
 

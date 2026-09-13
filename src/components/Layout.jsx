@@ -32,6 +32,7 @@ export function Layout({ children, title }) {
   const navItems = role === 'employee' ? [
     { section: 'Self-Service', items: [
       { path: '/my-attendance', label: 'My Attendance & Punch', icon: <UserCheck size={18} /> },
+      { path: '/my-payslips', label: 'My Payslips (View Only)', icon: <FileText size={18} /> },
     ]}
   ] : [
     { section: 'Overview', items: [

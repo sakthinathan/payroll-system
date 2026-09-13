@@ -47,7 +47,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
-      <Route path="/my-attendance" element={<Protected><EmployeePortal /></Protected>} />
+      <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
+      <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />
       <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
       <Route path="/employees" element={<Protected><Employees /></Protected>} />
       <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
