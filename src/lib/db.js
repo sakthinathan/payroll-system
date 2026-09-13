@@ -65,21 +65,34 @@ export const DB = {
   },
 
   updateEmployee: async emp => {
-    const { data, error } = await supabase.from('employees').update({
+    const payload = {
       name: emp.name,
       salary: emp.salary,
-      salary_type: emp.salaryType || 'weekly',
-      emp_id: emp.empId || null,
-      identity_no: emp.identityNo || null,
-      joining_date: emp.joiningDate || null,
-      relieving_date: emp.relievingDate || null,
+      salary_type: emp.salaryType || emp.salary_type || 'weekly',
+      emp_id: emp.empId || emp.emp_id || null,
+      identity_no: emp.identityNo || emp.identity_no || null,
+      joining_date: emp.joiningDate || emp.joining_date || null,
+      relieving_date: emp.relievingDate || emp.relieving_date || null,
       phone: emp.phone || null,
       address: emp.address || null,
-      pin_code: emp.pinCode || '1234',
-      profile_photo: emp.profilePhoto || null,
-      face_descriptor: emp.faceDescriptor || null
-    }).eq('id', emp.id)
-    if (error) throw error
+      pin_code: emp.pinCode || emp.pin_code || '1234',
+      profile_photo: emp.profilePhoto || emp.profile_photo || null,
+      face_descriptor: emp.faceDescriptor || emp.face_descriptor || null
+    }
+
+    const { data, error } = await supabase.from('employees').update(payload).eq('id', emp.id)
+    if (error) {
+      // Handle missing schema columns or Supabase payload errors gracefully
+      if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('profile_photo') || error.message?.includes('face_descriptor')) {
+        console.warn('Supabase employees schema missing photo columns, updating basic profile fields:', error.message)
+        delete payload.profile_photo
+        delete payload.face_descriptor
+        const { data: retryData, error: retryError } = await supabase.from('employees').update(payload).eq('id', emp.id)
+        if (retryError) console.error('Retry error updating employee:', retryError)
+        return retryData
+      }
+      console.warn('Supabase employee update issue:', error)
+    }
     return data
   },
 

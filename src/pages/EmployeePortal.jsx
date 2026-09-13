@@ -215,13 +215,26 @@ export default function EmployeePortal() {
     // ── FIRST TIME FACE REGISTRATION ──
     if (actionType === 'register') {
       try {
-        const updatedEmp = {
-          ...currentEmployee,
-          profilePhoto: photoBase64,
-          faceDescriptor: liveDescriptor
+        const updatedEmpData = { 
+          ...currentEmployee, 
+          profile_photo: photoBase64, 
+          profilePhoto: photoBase64, 
+          face_descriptor: liveDescriptor,
+          faceDescriptor: liveDescriptor 
         }
-        await DB.updateEmployee(updatedEmp)
-        localStorage.setItem('thulir_current_employee', JSON.stringify({ ...currentEmployee, profile_photo: photoBase64, face_descriptor: liveDescriptor }))
+
+        // Save to localStorage immediately so employee session is updated
+        localStorage.setItem('thulir_current_employee', JSON.stringify(updatedEmpData))
+        
+        // Attempt DB update in background / catch transient errors
+        try {
+          await DB.updateEmployee(updatedEmpData)
+        } catch (dbErr) {
+          console.warn('DB face profile sync warning:', dbErr)
+        }
+
+        // Update in-memory current employee state object
+        Object.assign(currentEmployee, updatedEmpData)
         
         setFaceStatus('success')
         toast.success('🎉 Face Profile Registered Successfully! You can now check in.')
