@@ -3,10 +3,13 @@ import { useAuth } from '../lib/auth'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BRAND } from '../config/branding'
+import { Modal, Field } from './UI'
+import toast from 'react-hot-toast'
 import { 
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
-  Download, Database, Key, LogOut, Menu, X
+  Download, Database, Key, LogOut, Menu, X,
+  User, Settings, Info, ChevronDown
 } from 'lucide-react'
 
 export function Layout({ children, title }) {
@@ -14,10 +17,13 @@ export function Layout({ children, title }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [activeModal, setActiveModal] = useState(null) // 'profile' | 'settings' | 'about'
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
   useEffect(() => {
     setIsMenuOpen(false)
+    setProfileMenuOpen(false)
     if (location.pathname && location.pathname !== '/login') {
       localStorage.setItem('last_visited_route', location.pathname)
     }
@@ -115,16 +121,100 @@ export function Layout({ children, title }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div className="desktop-only" style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>System Administrator</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '1px' }}>Thulir Agency</div>
+            {/* ── TOP RIGHT USER PROFILE DROPDOWN MENU ── */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '6px 12px', borderRadius: 9999, background: profileMenuOpen ? 'var(--brit-cream-light)' : 'transparent', border: profileMenuOpen ? '1px solid var(--border)' : '1px solid transparent', transition: 'all 0.2s ease' }}
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              >
+                <div className="desktop-only" style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>System Administrator</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '1px' }}>Thulir Agency</div>
+                </div>
+                <div 
+                  style={{ width: 40, height: 40, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, border: '2px solid var(--brit-gold)', boxShadow: '0 4px 15px rgba(227, 30, 36, 0.3)' }}
+                >
+                  {user?.email?.[0].toUpperCase() || 'A'}
+                </div>
+                <ChevronDown size={16} color="var(--navy)" style={{ transform: profileMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+
+              {/* POPDOWN MENU POPOVER */}
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1100 }} onClick={() => setProfileMenuOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      style={{
+                        position: 'absolute',
+                        top: '125%',
+                        right: 0,
+                        width: 240,
+                        background: '#FFFFFF',
+                        border: '2px solid var(--border)',
+                        borderRadius: 20,
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
+                        zIndex: 1200,
+                        overflow: 'hidden',
+                        padding: '8px 0'
+                      }}
+                    >
+                      <div style={{ padding: '12px 20px 10px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--navy)' }}>System Administrator</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--slate)', wordBreak: 'break-all' }}>{user?.email || 'admin@thuliragency.com'}</div>
+                      </div>
+
+                      <button 
+                        className="popover-item"
+                        onClick={() => { setProfileMenuOpen(false); setActiveModal('profile') }}
+                      >
+                        <User size={16} color="var(--brit-red)" />
+                        <span>Profile</span>
+                      </button>
+
+                      <button 
+                        className="popover-item"
+                        onClick={() => { setProfileMenuOpen(false); setActiveModal('settings') }}
+                      >
+                        <Settings size={16} color="var(--brit-red)" />
+                        <span>Settings</span>
+                      </button>
+
+                      <button 
+                        className="popover-item"
+                        onClick={() => { setProfileMenuOpen(false); navigate('/changepw') }}
+                      >
+                        <Key size={16} color="var(--brit-red)" />
+                        <span>Change Password</span>
+                      </button>
+
+                      <button 
+                        className="popover-item"
+                        onClick={() => { setProfileMenuOpen(false); setActiveModal('about') }}
+                      >
+                        <Info size={16} color="var(--brit-red)" />
+                        <span>About System</span>
+                      </button>
+
+                      <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0 0', paddingTop: 6 }}>
+                        <button 
+                          className="popover-item"
+                          onClick={() => { setProfileMenuOpen(false); logout() }}
+                        >
+                          <LogOut size={16} color="var(--brit-red)" />
+                          <span style={{ color: 'var(--brit-red)', fontWeight: 800 }}>Logout</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
-            <div 
-              style={{ width: 40, height: 40, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, cursor: 'pointer', border: '2px solid var(--brit-gold)', boxShadow: '0 4px 15px rgba(227, 30, 36, 0.3)' }}
-              onClick={() => navigate('/changepw')}
-            >
-              {user?.email?.[0].toUpperCase() || 'A'}
-            </div>
+
             <button className="mobile-only btn" style={{ padding: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--navy)' }} onClick={() => setIsMenuOpen(true)}>
               <Menu size={20} />
             </button>
@@ -144,6 +234,71 @@ export function Layout({ children, title }) {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* ── MODALS FOR PROFILE, SETTINGS, ABOUT ── */}
+      {activeModal === 'profile' && (
+        <Modal title="Admin Profile" onClose={() => setActiveModal(null)} saveLabel="Close" onSave={() => setActiveModal(null)}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', fontSize: 28, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '3px solid var(--brit-gold)', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
+              {user?.email?.[0].toUpperCase() || 'A'}
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: 'var(--navy)' }}>System Administrator</h3>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--brit-red)' }}>{user?.email || 'admin@thuliragency.com'}</p>
+          </div>
+          <div style={{ background: 'var(--brit-cream-light)', borderRadius: 16, padding: 20, border: '1px solid var(--border)', display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Role</span>
+              <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Super Admin</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Agency</span>
+              <span style={{ fontWeight: 800, color: 'var(--navy)' }}>Thulir Agency</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Theme Edition</span>
+              <span className="badge badge-red">Britannia FMCG Red</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ fontWeight: 700, color: 'var(--slate)' }}>Status</span>
+              <span className="badge badge-green">Active Session</span>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {activeModal === 'settings' && (
+        <Modal title="System Settings" onClose={() => setActiveModal(null)} saveLabel="Save Settings" onSave={() => { toast.success('Settings updated'); setActiveModal(null); }}>
+          <div style={{ display: 'grid', gap: 20 }}>
+            <Field label="Organization Name">
+              <input className="form-input" defaultValue="Thulir Agency" readOnly style={{ background: 'var(--brit-cream-light)' }} />
+            </Field>
+            <Field label="Default Working Days (Per Month)">
+              <input className="form-input" type="number" defaultValue={26} />
+            </Field>
+            <Field label="Primary Theme Palette">
+              <input className="form-input" defaultValue="Britannia Red & Cream (#E31E24)" readOnly style={{ background: 'var(--brit-cream-light)' }} />
+            </Field>
+          </div>
+        </Modal>
+      )}
+
+      {activeModal === 'about' && (
+        <Modal title="About Thulir Payroll" onClose={() => setActiveModal(null)} saveLabel="Got It" onSave={() => setActiveModal(null)}>
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <div style={{ width: 64, height: 64, background: 'var(--brit-red)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#fff', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
+              <Landmark size={32} />
+            </div>
+            <h3 style={{ fontSize: 22, fontWeight: 900, color: 'var(--navy)' }}>Thulir Payroll System</h3>
+            <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--brit-red)', letterSpacing: 1, textTransform: 'uppercase', margin: '4px 0 16px' }}>Version 2.5 • Britannia FMCG Edition</p>
+            <p style={{ fontSize: 14, color: 'var(--slate)', lineHeight: 1.6, marginBottom: 24 }}>
+              Comprehensive FMCG Payroll, Attendance, Advance Recovery, and Stock Shortage tracking application crafted specifically for Thulir Agency.
+            </p>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)', opacity: 0.6 }}>
+              © 2026 Thulir Agency. All Rights Reserved.
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

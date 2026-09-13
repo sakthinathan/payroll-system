@@ -521,3 +521,27 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* ── POPOVER MENU ITEMS ── */
+.popover-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  font-family: var(--font);
+}
+.popover-item:hover {
+  background: var(--brit-cream-light);
+  color: var(--brit-red);
+  padding-left: 24px;
+}
+
+

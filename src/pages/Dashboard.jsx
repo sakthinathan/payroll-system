@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { 
   Users, Wallet, AlertCircle, Banknote, 
-  ArrowUpRight, ArrowDownRight, TrendingUp, CheckCircle2 
+  ArrowUpRight, ArrowDownRight, TrendingUp, CheckCircle2, Calendar 
 } from 'lucide-react'
 
 export default function Dashboard() {
@@ -43,22 +43,21 @@ export default function Dashboard() {
     const mPeriodMap = {}
     monthlyPeriods.forEach(p => mPeriodMap[p.id] = p)
     
-    // 1. Map-based lookups for O(N) efficiency
     const empMap = DB.createEmpMap(emps)
     
-    // 2. Filter data by FY
     const fyWeekly = weekly.filter(w => {
+      if (selectedFY === 'ALL') return true
       const p = periodMap[w.period_id]
       return p && getFY(p.date_from) === selectedFY
     })
     const fyMonthly = monthly.filter(m => {
+      if (selectedFY === 'ALL') return true
       const p = mPeriodMap[m.period_id]
       return p && getFY(p.date_from) === selectedFY
     })
-    const fyAdvances = advances.filter(a => getFY(a.date) === selectedFY)
-    const fyShortages = shortages.filter(s => getFY(s.date) === selectedFY)
+    const fyAdvances = advances.filter(a => selectedFY === 'ALL' || getFY(a.date) === selectedFY)
+    const fyShortages = shortages.filter(s => selectedFY === 'ALL' || getFY(s.date) === selectedFY)
 
-    // 3. Efficient calculations
     let totalPayroll = 0
     let totalAdv = 0
     let totalShr = 0
@@ -80,11 +79,10 @@ export default function Dashboard() {
     const weeklyEmps = emps.filter(e => e.salary_type === 'weekly' || !e.salary_type).length
     
     let processedCount = 0
-    if (openP && getFY(openP.date_from) === selectedFY) {
+    if (openP && (selectedFY === 'ALL' || getFY(openP.date_from) === selectedFY)) {
       processedCount = weekly.filter(w => w.period_id === openP.id).length
     }
     
-    // Get all available FYs
     const fys = new Set()
     allPeriods.forEach(p => { const fy = getFY(p.date_from); if (fy) fys.add(fy) })
     monthlyPeriods.forEach(p => { const fy = getFY(p.date_from); if (fy) fys.add(fy) })
@@ -99,21 +97,27 @@ export default function Dashboard() {
   const { totalPayroll, totalAdv, totalShr, latestWeekly, activeEmps, empMap, wd, openP, processedCount, weeklyEmps, availableFYs } = stats
 
   return (
-    <Layout title={
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <span>Payroll Overview</span>
-        <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Financial Year</span>
+    <Layout title="Dashboard & Analytics">
+      {/* ── FINANCIAL YEAR SELECTION HEADER ── */}
+      <div style={{ background: '#FFFFFF', border: '2px solid var(--border)', borderRadius: 24, padding: '20px 28px', marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, boxShadow: 'var(--shadow)' }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 900, color: 'var(--navy)', letterSpacing: '-0.3px' }}>Payroll Overview</h2>
+          <p style={{ fontSize: 13, color: 'var(--slate)', fontWeight: 600, marginTop: 2 }}>Summary statistics filtered by Financial Year</p>
+        </div>
+
+        <div style={{ background: 'var(--brit-cream-light)', border: '2px solid var(--brit-red)', borderRadius: 9999, padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 15px rgba(227, 30, 36, 0.12)' }}>
+          <Calendar size={18} color="var(--brit-red)" />
+          <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--navy)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Financial Year:</span>
           <select 
             value={selectedFY} 
             onChange={e => setSelectedFY(e.target.value)}
-            style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 13, fontWeight: 800, outline: 'none', cursor: 'pointer' }}
+            style={{ background: '#FFFFFF', border: '1.5px solid var(--border)', borderRadius: 9999, color: 'var(--brit-red)', padding: '6px 16px', fontSize: 13, fontWeight: 900, outline: 'none', cursor: 'pointer' }}
           >
-            {availableFYs.map(fy => <option key={fy} value={fy} style={{ color: '#000' }}>FY {fy}</option>)}
+            <option value="ALL">All Financial Years</option>
+            {availableFYs.map(fy => <option key={fy} value={fy}>FY {fy}</option>)}
           </select>
         </div>
       </div>
-    }>
       <div className="kpi-grid">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="kpi-card">
