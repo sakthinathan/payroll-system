@@ -482,7 +482,7 @@ export default function EmployeePortal({ defaultTab }) {
           )}
 
           {/* ── DAILY CHECK-IN / CHECK-OUT CARD ── */}
-          <div className="glass-panel" style={{ padding: 32, marginBottom: 28, opacity: (!isFaceRegistered && !cameraActive) ? 0.7 : 1, pointerEvents: (!isFaceRegistered && !cameraActive) ? 'none' : 'auto' }}>
+          <div className="glass-panel" style={{ padding: 32, marginBottom: 28 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 900, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Attendance Status</h3>
@@ -516,7 +516,14 @@ export default function EmployeePortal({ defaultTab }) {
                     className="btn btn-primary" 
                     style={{ padding: '16px 36px', fontSize: 15 }}
                     disabled={!!todayLog?.check_in_time}
-                    onClick={() => startCamera('in')}
+                    onClick={() => {
+                      if (!isFaceRegistered) {
+                        toast.error('Please complete 1-time face profile setup first!')
+                        startCamera('register')
+                      } else {
+                        startCamera('in')
+                      }
+                    }}
                   >
                     <Camera size={20} />
                     <span>Tap to Check In</span>
