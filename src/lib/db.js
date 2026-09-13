@@ -94,22 +94,52 @@ export const DB = {
     return data
   },
 
-  saveWeekly: e => supabase.from('weekly_entries').insert({
-    id: e.id, name: e.name, week_label: e.weekLabel, date: e.date || null,
-    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
-    adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-    additional_salary: e.additionalSalary || 0,
-    additional_work_type: e.additionalWorkType || '',
-    period_id: e.periodId || null
-  }),
+  saveWeekly: async e => {
+    const payload = {
+      id: e.id, name: e.name, week_label: e.weekLabel, date: e.date || null,
+      days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
+      adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+      period_id: e.periodId || null
+    }
+    if (e.additionalSalary) payload.additional_salary = e.additionalSalary
+    if (e.additionalWorkType) payload.additional_work_type = e.additionalWorkType
 
-  updateWeekly: e => supabase.from('weekly_entries').update({
-    name: e.name, week_label: e.weekLabel, date: e.date || null,
-    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
-    adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-    additional_salary: e.additionalSalary || 0,
-    additional_work_type: e.additionalWorkType || '',
-  }).eq('id', e.id),
+    const { data, error } = await supabase.from('weekly_entries').insert(payload)
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('additional_') || error.message?.includes('column')) {
+        delete payload.additional_salary
+        delete payload.additional_work_type
+        const { data: retryData, error: retryError } = await supabase.from('weekly_entries').insert(payload)
+        if (retryError) throw retryError
+        return retryData
+      }
+      throw error
+    }
+    return data
+  },
+
+  updateWeekly: async e => {
+    const payload = {
+      name: e.name, week_label: e.weekLabel, date: e.date || null,
+      days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
+      adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    }
+    if (e.additionalSalary !== undefined) payload.additional_salary = e.additionalSalary || 0
+    if (e.additionalWorkType !== undefined) payload.additional_work_type = e.additionalWorkType || ''
+
+    const { data, error } = await supabase.from('weekly_entries').update(payload).eq('id', e.id)
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('additional_') || error.message?.includes('column')) {
+        delete payload.additional_salary
+        delete payload.additional_work_type
+        const { data: retryData, error: retryError } = await supabase.from('weekly_entries').update(payload).eq('id', e.id)
+        if (retryError) throw retryError
+        return retryData
+      }
+      throw error
+    }
+    return data
+  },
 
   deleteWeekly: id => supabase.from('weekly_entries').delete().eq('id', id),
 
@@ -120,22 +150,52 @@ export const DB = {
     return data
   },
 
-  saveMonthly: e => supabase.from('monthly_entries').insert({
-    id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
-    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
-    adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-    additional_salary: e.additionalSalary || 0,
-    additional_work_type: e.additionalWorkType || '',
-    period_id: e.periodId || null
-  }),
+  saveMonthly: async e => {
+    const payload = {
+      id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
+      days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
+      adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+      period_id: e.periodId || null
+    }
+    if (e.additionalSalary) payload.additional_salary = e.additionalSalary
+    if (e.additionalWorkType) payload.additional_work_type = e.additionalWorkType
 
-  updateMonthly: e => supabase.from('monthly_entries').update({
-    name: e.name, month_label: e.monthLabel, date: e.date || null,
-    days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
-    adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
-    additional_salary: e.additionalSalary || 0,
-    additional_work_type: e.additionalWorkType || '',
-  }).eq('id', e.id),
+    const { data, error } = await supabase.from('monthly_entries').insert(payload)
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('additional_') || error.message?.includes('column')) {
+        delete payload.additional_salary
+        delete payload.additional_work_type
+        const { data: retryData, error: retryError } = await supabase.from('monthly_entries').insert(payload)
+        if (retryError) throw retryError
+        return retryData
+      }
+      throw error
+    }
+    return data
+  },
+
+  updateMonthly: async e => {
+    const payload = {
+      name: e.name, month_label: e.monthLabel, date: e.date || null,
+      days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
+      adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    }
+    if (e.additionalSalary !== undefined) payload.additional_salary = e.additionalSalary || 0
+    if (e.additionalWorkType !== undefined) payload.additional_work_type = e.additionalWorkType || ''
+
+    const { data, error } = await supabase.from('monthly_entries').update(payload).eq('id', e.id)
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('additional_') || error.message?.includes('column')) {
+        delete payload.additional_salary
+        delete payload.additional_work_type
+        const { data: retryData, error: retryError } = await supabase.from('monthly_entries').update(payload).eq('id', e.id)
+        if (retryError) throw retryError
+        return retryData
+      }
+      throw error
+    }
+    return data
+  },
 
   deleteMonthly: id => supabase.from('monthly_entries').delete().eq('id', id),
 

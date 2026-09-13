@@ -211,7 +211,7 @@ export function Monthly() {
       const inserts = pendingEmps.map(emp => ({
         id: uid(), name: emp.name, monthLabel: activePeriod.label, date: activePeriod.date_from, 
         daysWorked: bulkForm.daysWorked, leaves: bulkForm.leaves, advDeducted: bulkForm.advDeducted, 
-        shrDeducted: bulkForm.shr_deducted, additionalSalary: 0, additionalWorkType: '', periodId: activePeriod.id
+        shrDeducted: bulkForm.shrDeducted, additionalSalary: 0, additionalWorkType: '', periodId: activePeriod.id
       }))
       await Promise.all(inserts.map(DB.saveMonthly))
       toast.success('Added staff successfully', { id: p })
