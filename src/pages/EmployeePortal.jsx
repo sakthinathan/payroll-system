@@ -267,6 +267,11 @@ export default function EmployeePortal({ defaultTab }) {
           faceDescriptor: liveDescriptor 
         }
 
+        // Save persistent face template to localStorage for zero-latency offline verification
+        if (currentEmployee?.id) {
+          localStorage.setItem(`thulir_face_${currentEmployee.id}`, JSON.stringify({ photo: photoBase64, descriptor: liveDescriptor }))
+        }
+
         // Save to Auth context and localStorage immediately
         if (updateCurrentEmployee) {
           updateCurrentEmployee(updatedEmpData)

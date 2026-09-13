@@ -21,7 +21,7 @@ export function captureSnapshot(videoElement) {
   return canvas.toDataURL('image/jpeg', 0.8) // Compressed JPEG
 }
 
-// Generate facial descriptor vector (normalized feature hash)
+// Generate facial descriptor vector (normalized 64-region spatial feature vector)
 export function generateFaceDescriptor(imageDataUrl) {
   return new Promise((resolve) => {
     const img = new Image()
@@ -29,24 +29,46 @@ export function generateFaceDescriptor(imageDataUrl) {
     img.src = imageDataUrl
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
+      canvas.width = 128
+      canvas.height = 128
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, 64, 64)
-      const imgData = ctx.getImageData(0, 0, 64, 64).data
+      ctx.drawImage(img, 0, 0, 128, 128)
+      const imgData = ctx.getImageData(0, 0, 128, 128).data
       
-      // Calculate 64 spatial intensity features
-      const descriptor = []
-      for (let i = 0; i < imgData.length; i += 16) {
-        const r = imgData[i]
-        const g = imgData[i + 1]
-        const b = imgData[i + 2]
-        // Luminance
-        descriptor.push(Math.round(0.299 * r + 0.587 * g + 0.114 * b))
+      const width = 128
+      const height = 128
+      const cellW = 16 // 128 / 8
+      const cellH = 16
+      const rawFeatures = []
+
+      // Extract average luminance across an 8x8 grid covering the whole face (64 spatial cells)
+      for (let gy = 0; gy < 8; gy++) {
+        for (let gx = 0; gx < 8; gx++) {
+          let sumLum = 0
+          let count = 0
+          for (let y = gy * cellH; y < (gy + 1) * cellH; y++) {
+            for (let x = gx * cellW; x < (gx + 1) * cellW; x++) {
+              const idx = (y * width + x) * 4
+              const r = imgData[idx]
+              const g = imgData[idx + 1]
+              const b = imgData[idx + 2]
+              sumLum += 0.299 * r + 0.587 * g + 0.114 * b
+              count++
+            }
+          }
+          rawFeatures.push(count > 0 ? sumLum / count : 128)
+        }
       }
-      resolve(descriptor.slice(0, 128))
+
+      // Z-Score Mean & Variance Normalization (Lighting Invariance)
+      const mean = rawFeatures.reduce((a, b) => a + b, 0) / rawFeatures.length
+      const variance = rawFeatures.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / rawFeatures.length
+      const std = Math.sqrt(variance) || 1
+
+      const normalized = rawFeatures.map(v => (v - mean) / std)
+      resolve(normalized)
     }
-    img.onerror = () => resolve(Array(128).fill(128))
+    img.onerror = () => resolve(Array(64).fill(0))
   })
 }
 
@@ -129,23 +151,30 @@ export function compareFaceDescriptors(desc1Raw, desc2Raw) {
     return { score: 0, distance: '1.000', verified: false, reason: 'No reference profile registered' }
   }
 
-  let sumDiff = 0
+  // Compare spatial vector using Cosine Similarity
   const len = Math.min(desc1.length, desc2.length)
+  let dotProduct = 0
+  let norm1 = 0
+  let norm2 = 0
+
   for (let i = 0; i < len; i++) {
-    const diff = (desc1[i] - desc2[i]) / 255
-    sumDiff += diff * diff
+    const v1 = Number(desc1[i]) || 0
+    const v2 = Number(desc2[i]) || 0
+    dotProduct += v1 * v2
+    norm1 += v1 * v1
+    norm2 += v2 * v2
   }
 
-  const distance = Math.sqrt(sumDiff / len)
+  const denominator = Math.sqrt(norm1) * Math.sqrt(norm2)
+  const cosineSim = denominator > 0 ? dotProduct / denominator : 0
   
-  // Calculate match percentage score (0% to 100%)
-  // Distance 0.0 -> 100% Match; Distance 0.25 -> 50% Match; Distance 0.5+ -> 0% Match
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance * 2.0) * 100)))
-  const verified = confidence >= 60
+  // Convert Cosine Similarity (-1.0 to 1.0) into Match Score (0% to 100%)
+  const score = Math.max(0, Math.min(100, Math.round(((cosineSim + 1) / 2) * 100)))
+  const verified = score >= 60
 
   return {
-    score: confidence,
-    distance: distance.toFixed(3),
+    score,
+    distance: (1 - cosineSim).toFixed(3),
     verified
   }
 }
