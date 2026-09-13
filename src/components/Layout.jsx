@@ -69,7 +69,14 @@ export function Layout({ children, title }) {
       </AnimatePresence>
 
       <aside id="sidebar" className={isMenuOpen ? 'open' : ''}>
-        <nav style={{ paddingTop: 20, paddingBottom: 40 }}>
+        <div className="sidebar-logo">
+          <div style={{ background: '#fff', width: 34, height: 34, borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Landmark size={20} color="var(--brit-red)" />
+          </div>
+          <h1>{BRAND.name}</h1>
+        </div>
+
+        <nav style={{ paddingTop: 16, paddingBottom: 40 }}>
           {navItems.map(sec => (
             <div key={sec.section}>
               <div className="nav-section">{sec.section}</div>
@@ -82,10 +89,10 @@ export function Layout({ children, title }) {
             </div>
           ))}
           
-          <div style={{ marginTop: 24, padding: '0 12px' }}>
-            <button onClick={logout} className="btn" style={{ width: '100%', background: 'var(--grey)', color: 'var(--rose)', border: 'none', justifyContent: 'flex-start', padding: '10px 16px', borderRadius: 8 }}>
+          <div style={{ marginTop: 24, padding: '0 14px' }}>
+            <button onClick={logout} className="btn" style={{ width: '100%', background: '#FDE8E8', color: 'var(--brit-red)', border: '1px solid #F8B4B4', justifyContent: 'flex-start', padding: '12px 18px', borderRadius: 9999 }}>
               <LogOut size={16} />
-              <span style={{ fontWeight: 600, marginLeft: 12, fontSize: 13 }}>Logout</span>
+              <span style={{ fontWeight: 800, marginLeft: 8, fontSize: 12 }}>Logout</span>
             </button>
           </div>
         </nav>
@@ -93,33 +100,32 @@ export function Layout({ children, title }) {
 
       <main id="main">
         <header id="topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ background: 'var(--blue)', width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Landmark size={20} color="#fff" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ background: 'var(--brit-red)', padding: '6px 14px', borderRadius: 9999, color: '#fff', fontSize: 13, fontWeight: 900, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(227, 30, 36, 0.3)' }}>
+                {BRAND.name}
               </div>
-              <h1 style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>{BRAND.name}</h1>
             </div>
             
-            <div className="desktop-only" style={{ height: 32, width: 1, background: 'rgba(255,255,255,0.1)' }} />
+            <div className="desktop-only" style={{ height: 28, width: 2, background: 'var(--border)' }} />
             
             <div className="desktop-only">
-              <h2 style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{title}</h2>
+              <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--navy)' }}>{title}</h2>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div className="desktop-only" style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>System Administrator</div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{BRAND.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>System Administrator</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '1px' }}>Thulir Agency</div>
             </div>
             <div 
-              style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, cursor: 'pointer', border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              style={{ width: 40, height: 40, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, cursor: 'pointer', border: '2px solid var(--brit-gold)', boxShadow: '0 4px 15px rgba(227, 30, 36, 0.3)' }}
               onClick={() => navigate('/changepw')}
             >
               {user?.email?.[0].toUpperCase() || 'A'}
             </div>
-            <button className="mobile-only btn" style={{ padding: 8, background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }} onClick={() => setIsMenuOpen(true)}>
+            <button className="mobile-only btn" style={{ padding: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--navy)' }} onClick={() => setIsMenuOpen(true)}>
               <Menu size={20} />
             </button>
           </div>

@@ -53,7 +53,7 @@ export default function Login() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            style={{ color: '#ffffff', fontSize: 26, fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 6 }}
+            style={{ color: 'var(--brit-red)', fontSize: 28, fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 4 }}
           >
             {BRAND.name}
           </motion.h1>
@@ -61,7 +61,7 @@ export default function Login() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500, letterSpacing: '0.5px' }}
+            style={{ color: 'var(--slate)', fontSize: 13, fontWeight: 700, letterSpacing: '0.5px' }}
           >
             {BRAND.tagline || 'Smart Automated Payroll System'}
           </motion.p>
