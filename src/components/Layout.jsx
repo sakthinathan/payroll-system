@@ -54,9 +54,6 @@ export function Layout({ children, title }) {
     { section: 'Reports', items: [
       { path: '/payslip', label: 'Payslip Generator', icon: <FileText size={18} /> },
       { path: '/downloads', label: 'Downloads', icon: <Download size={18} /> },
-    ]},
-    { section: 'System', items: [
-      { path: '/changepw', label: 'Change Password', icon: <Key size={18} /> },
     ]}
   ]
 
