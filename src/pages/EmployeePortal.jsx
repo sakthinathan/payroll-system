@@ -70,10 +70,16 @@ export default function EmployeePortal({ defaultTab }) {
     return () => clearInterval(timer)
   }, [])
 
-  // Auto-bind media stream to video element when DOM mounts
+  // Auto-bind media stream to video element when DOM mounts & cleanup on unmount
   useEffect(() => {
     if (cameraActive && videoRef.current && mediaStreamRef.current) {
       videoRef.current.srcObject = mediaStreamRef.current
+    }
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop())
+        mediaStreamRef.current = null
+      }
     }
   }, [cameraActive])
 

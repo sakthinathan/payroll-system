@@ -1,21 +1,41 @@
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './lib/auth'
-import { useEffect } from 'react'
 import { DB } from './lib/db'
 
-import Login        from './pages/Login'
-import Dashboard    from './pages/Dashboard'
-import Employees    from './pages/Employees'
-import { Advances, Shortages, Deductions, Bank, ChangePassword } from './pages/Other'
-import { Weekly, Periods } from './pages/WeeklyPeriods'
-import { Monthly }         from './pages/MonthlyEntry'
-import { MonthlyPeriods }  from './pages/MonthlyPeriods'
-import Ledger from './pages/Ledger'
-import { Payslip } from './pages/PayslipBackup'
-import Downloads    from './pages/Downloads'
-import EmployeePortal from './pages/EmployeePortal'
-import AttendanceApproval from './pages/AttendanceApproval'
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Employees = lazy(() => import('./pages/Employees'))
+const EmployeePortal = lazy(() => import('./pages/EmployeePortal'))
+const AttendanceApproval = lazy(() => import('./pages/AttendanceApproval'))
+const Ledger = lazy(() => import('./pages/Ledger'))
+const Downloads = lazy(() => import('./pages/Downloads'))
+
+const Advances = lazy(() => import('./pages/Other').then(m => ({ default: m.Advances })))
+const Shortages = lazy(() => import('./pages/Other').then(m => ({ default: m.Shortages })))
+const Deductions = lazy(() => import('./pages/Other').then(m => ({ default: m.Deductions })))
+const Bank = lazy(() => import('./pages/Other').then(m => ({ default: m.Bank })))
+const ChangePassword = lazy(() => import('./pages/Other').then(m => ({ default: m.ChangePassword })))
+
+const Weekly = lazy(() => import('./pages/WeeklyPeriods').then(m => ({ default: m.Weekly })))
+const Periods = lazy(() => import('./pages/WeeklyPeriods').then(m => ({ default: m.Periods })))
+const Monthly = lazy(() => import('./pages/MonthlyEntry').then(m => ({ default: m.Monthly })))
+const MonthlyPeriods = lazy(() => import('./pages/MonthlyPeriods').then(m => ({ default: m.MonthlyPeriods })))
+const Payslip = lazy(() => import('./pages/PayslipBackup').then(m => ({ default: m.Payslip })))
+
+function RouteLoader() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        width: 36, height: 36, border: '3px solid rgba(198, 40, 40, 0.15)',
+        borderTopColor: 'var(--brit-red, #C62828)', borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite'
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -44,28 +64,30 @@ function AppRoutes() {
   }, [user])
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginRoute />} />
-      <Route path="/" element={<Protected><Dashboard /></Protected>} />
-      <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
-      <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />
-      <Route path="/my-face" element={<Protected><EmployeePortal defaultTab="face" /></Protected>} />
-      <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
-      <Route path="/employees" element={<Protected><Employees /></Protected>} />
-      <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
-      <Route path="/periods" element={<Protected><Periods /></Protected>} />
-      <Route path="/monthly" element={<Protected><Monthly /></Protected>} />
-      <Route path="/ledger" element={<Protected><Ledger /></Protected>} />
-      <Route path="/monthly-periods" element={<Protected><MonthlyPeriods /></Protected>} />
-      <Route path="/advances" element={<Protected><Advances /></Protected>} />
-      <Route path="/shortages" element={<Protected><Shortages /></Protected>} />
-      <Route path="/deductions" element={<Protected><Deductions /></Protected>} />
-      <Route path="/bank" element={<Protected><Bank /></Protected>} />
-      <Route path="/payslip" element={<Protected><Payslip /></Protected>} />
-      <Route path="/downloads" element={<Protected><Downloads /></Protected>} />
-      <Route path="/changepw" element={<Protected><ChangePassword /></Protected>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<RouteLoader />}>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+        <Route path="/" element={<Protected><Dashboard /></Protected>} />
+        <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
+        <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />
+        <Route path="/my-face" element={<Protected><EmployeePortal defaultTab="face" /></Protected>} />
+        <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
+        <Route path="/employees" element={<Protected><Employees /></Protected>} />
+        <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
+        <Route path="/periods" element={<Protected><Periods /></Protected>} />
+        <Route path="/monthly" element={<Protected><Monthly /></Protected>} />
+        <Route path="/ledger" element={<Protected><Ledger /></Protected>} />
+        <Route path="/monthly-periods" element={<Protected><MonthlyPeriods /></Protected>} />
+        <Route path="/advances" element={<Protected><Advances /></Protected>} />
+        <Route path="/shortages" element={<Protected><Shortages /></Protected>} />
+        <Route path="/deductions" element={<Protected><Deductions /></Protected>} />
+        <Route path="/bank" element={<Protected><Bank /></Protected>} />
+        <Route path="/payslip" element={<Protected><Payslip /></Protected>} />
+        <Route path="/downloads" element={<Protected><Downloads /></Protected>} />
+        <Route path="/changepw" element={<Protected><ChangePassword /></Protected>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 

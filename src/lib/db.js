@@ -17,7 +17,15 @@ const CACHE_TTL = 10000 // 10 seconds SWR TTL
 async function cachedQuery(key, fetcher) {
   const now = Date.now()
   const hit = cache.get(key)
-  if (hit && (now - hit.timestamp < CACHE_TTL)) {
+  if (hit) {
+    if (now - hit.timestamp < CACHE_TTL) {
+      return hit.data
+    }
+    // Stale-While-Revalidate: Return stale data instantly, trigger background revalidation
+    fetcher().then(freshData => {
+      if (freshData) cache.set(key, { data: freshData, timestamp: Date.now() })
+    }).catch(err => console.warn(`[SWR] Background refresh warning for ${key}:`, err.message || err))
+
     return hit.data
   }
   const data = await fetcher()
