@@ -288,7 +288,7 @@ export default function EmployeePortal() {
       )}
 
       {/* ── DAILY CHECK-IN / CHECK-OUT CARD ── */}
-      <div className="glass-panel" style={{ padding: 32, marginBottom: 28, opacity: !isFaceRegistered ? 0.6 : 1, pointerEvents: !isFaceRegistered ? 'none' : 'auto' }}>
+      <div className="glass-panel" style={{ padding: 32, marginBottom: 28, opacity: (!isFaceRegistered && !cameraActive) ? 0.7 : 1, pointerEvents: (!isFaceRegistered && !cameraActive) ? 'none' : 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 900, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Attendance Status</h3>
