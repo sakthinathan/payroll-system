@@ -10,6 +10,33 @@ if (!SUPA_URL || !SUPA_KEY) {
 
 export const supabase = createClient(SUPA_URL, SUPA_KEY)
 
+// ── In-Memory Fast Query Cache (0ms Instant Page Loads) ───────────
+const cache = new Map()
+const CACHE_TTL = 10000 // 10 seconds SWR TTL
+
+async function cachedQuery(key, fetcher) {
+  const now = Date.now()
+  const hit = cache.get(key)
+  if (hit && (now - hit.timestamp < CACHE_TTL)) {
+    return hit.data
+  }
+  const data = await fetcher()
+  cache.set(key, { data, timestamp: now })
+  return data
+}
+
+export const invalidateCache = (keyPattern) => {
+  if (!keyPattern) {
+    cache.clear()
+    return
+  }
+  for (const key of cache.keys()) {
+    if (key.includes(keyPattern)) {
+      cache.delete(key)
+    }
+  }
+}
+
 // ── Utilities ─────────────────────────────────────────────────────
 export const uid = () => crypto.randomUUID()
 export const fmt = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -17,14 +44,16 @@ export const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '
 
 // ── DB API ────────────────────────────────────────────────────────
 export const DB = {
+  clearCache: () => cache.clear(),
+
   // Employees
-  employees: async () => {
+  employees: () => cachedQuery('employees', async () => {
     const { data, error } = await supabase.from('employees').select('*').order('name')
     if (error) throw error
     return data
-  },
+  }),
   
-  weeklyEmps: async () => {
+  weeklyEmps: () => cachedQuery('weeklyEmps', async () => {
     const { data, error } = await supabase
       .from('employees')
       .select('*')
@@ -32,9 +61,9 @@ export const DB = {
       .order('name')
     if (error) throw error
     return data
-  },
+  }),
 
-  monthlyEmps: async () => {
+  monthlyEmps: () => cachedQuery('monthlyEmps', async () => {
     const { data, error } = await supabase
       .from('employees')
       .select('*')
@@ -42,9 +71,10 @@ export const DB = {
       .order('name')
     if (error) throw error
     return data
-  },
+  }),
 
   saveEmployee: async emp => {
+    cache.clear()
     const { data, error } = await supabase.from('employees').insert({
       id: emp.id,
       emp_id: emp.empId || null,
@@ -65,6 +95,7 @@ export const DB = {
   },
 
   updateEmployee: async emp => {
+    cache.clear()
     const payload = {
       name: emp.name,
       salary: emp.salary,
@@ -82,7 +113,6 @@ export const DB = {
 
     const { data, error } = await supabase.from('employees').update(payload).eq('id', emp.id)
     if (error) {
-      // Handle missing schema columns or Supabase payload errors gracefully
       if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('profile_photo') || error.message?.includes('face_descriptor')) {
         console.warn('Supabase employees schema missing photo columns, updating basic profile fields:', error.message)
         delete payload.profile_photo
@@ -104,16 +134,20 @@ export const DB = {
     return `${prefix}_${String(num + 1).padStart(2, '0')}`
   },
 
-  deleteEmployee: id => supabase.from('employees').delete().eq('id', id),
+  deleteEmployee: async id => {
+    cache.clear()
+    return supabase.from('employees').delete().eq('id', id)
+  },
 
   // Weekly entries
-  weekly: async () => {
+  weekly: () => cachedQuery('weekly', async () => {
     const { data, error } = await supabase.from('weekly_entries').select('*').order('created_at', { ascending: false })
     if (error) throw error
     return data
-  },
+  }),
 
   saveWeekly: async e => {
+    cache.clear()
     const payload = {
       id: e.id, name: e.name, week_label: e.weekLabel, date: e.date || null,
       days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
@@ -138,6 +172,7 @@ export const DB = {
   },
 
   updateWeekly: async e => {
+    cache.clear()
     const payload = {
       name: e.name, week_label: e.weekLabel, date: e.date || null,
       days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
@@ -160,16 +195,20 @@ export const DB = {
     return data
   },
 
-  deleteWeekly: id => supabase.from('weekly_entries').delete().eq('id', id),
+  deleteWeekly: async id => {
+    cache.clear()
+    return supabase.from('weekly_entries').delete().eq('id', id)
+  },
 
   // Monthly entries
-  monthlyAll: async () => {
+  monthlyAll: () => cachedQuery('monthlyAll', async () => {
     const { data, error } = await supabase.from('monthly_entries').select('*').order('created_at', { ascending: false })
     if (error) throw error
     return data
-  },
+  }),
 
   saveMonthly: async e => {
+    cache.clear()
     const payload = {
       id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
       days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
@@ -194,6 +233,7 @@ export const DB = {
   },
 
   updateMonthly: async e => {
+    cache.clear()
     const payload = {
       name: e.name, month_label: e.monthLabel, date: e.date || null,
       days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
@@ -216,64 +256,94 @@ export const DB = {
     return data
   },
 
-  deleteMonthly: id => supabase.from('monthly_entries').delete().eq('id', id),
+  deleteMonthly: async id => {
+    cache.clear()
+    return supabase.from('monthly_entries').delete().eq('id', id)
+  },
 
   // Advances
-  advances: async () => {
+  advances: () => cachedQuery('advances', async () => {
     const { data, error } = await supabase.from('advances').select('*').order('date', { ascending: false })
     if (error) throw error
     return data
-  },
-
-  saveAdvance: a => supabase.from('advances').insert({
-    id: a.id, name: a.name, date: a.date || null, amount: a.amount, remarks: a.remarks || ''
   }),
 
-  deleteAdvance: id => supabase.from('advances').delete().eq('id', id),
+  saveAdvance: async a => {
+    cache.clear()
+    return supabase.from('advances').insert({
+      id: a.id, name: a.name, date: a.date || null, amount: a.amount, remarks: a.remarks || ''
+    })
+  },
+
+  deleteAdvance: async id => {
+    cache.clear()
+    return supabase.from('advances').delete().eq('id', id)
+  },
 
   // Shortages
-  shortages: async () => {
+  shortages: () => cachedQuery('shortages', async () => {
     const { data, error } = await supabase.from('shortages').select('*').order('date', { ascending: false })
     if (error) throw error
     return data
-  },
-
-  saveShortage: s => supabase.from('shortages').insert({
-    id: s.id, name: s.name, date: s.date || null, amount: s.amount, remarks: s.remarks || ''
   }),
 
-  deleteShortage: id => supabase.from('shortages').delete().eq('id', id),
+  saveShortage: async s => {
+    cache.clear()
+    return supabase.from('shortages').insert({
+      id: s.id, name: s.name, date: s.date || null, amount: s.amount, remarks: s.remarks || ''
+    })
+  },
+
+  deleteShortage: async id => {
+    cache.clear()
+    return supabase.from('shortages').delete().eq('id', id)
+  },
 
   // Bank
-  bank: async () => {
+  bank: () => cachedQuery('bank', async () => {
     const { data, error } = await supabase.from('bank_accounts').select('*').order('name')
     if (error) throw error
     return data
+  }),
+
+  upsertBank: async b => {
+    cache.clear()
+    return supabase.from('bank_accounts').upsert(b)
   },
 
-  upsertBank: b => supabase.from('bank_accounts').upsert(b),
-  deleteBank: name => supabase.from('bank_accounts').delete().eq('name', name),
+  deleteBank: async name => {
+    cache.clear()
+    return supabase.from('bank_accounts').delete().eq('name', name)
+  },
 
   // Settings
   getSetting: async key => {
     const { data, error } = await supabase.from('settings').select('value').eq('key', key).single()
-    if (error && error.code !== 'PGRST116') throw error // PGRST116 is no rows returned
+    if (error && error.code !== 'PGRST116') throw error
     return data?.value ?? null
   },
 
-  setSetting: (key, value) => supabase.from('settings').upsert({ key, value: String(value) }),
-  getWorkingDays: async () => {
+  setSetting: async (key, value) => {
+    cache.clear()
+    return supabase.from('settings').upsert({ key, value: String(value) })
+  },
+
+  getWorkingDays: () => cachedQuery('working_days', async () => {
     const v = await DB.getSetting('working_days')
     return v ? Number(v) : 26
+  }),
+
+  setWorkingDays: async n => {
+    cache.clear()
+    return DB.setSetting('working_days', n)
   },
-  setWorkingDays: n => DB.setSetting('working_days', n),
 
   // Periods
-  periods: async () => {
+  periods: () => cachedQuery('periods', async () => {
     const { data, error } = await supabase.from('payroll_periods').select('*').order('date_from', { ascending: false })
     if (error) throw error
     return data
-  },
+  }),
 
   openPeriod: async () => {
     const { data, error } = await supabase
@@ -287,18 +357,28 @@ export const DB = {
     return data || null
   },
 
-  savePeriod: p => supabase.from('payroll_periods').insert(p),
-  closePeriod: (id, total) => supabase.from('payroll_periods').update({
-    status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
-  }).eq('id', id),
+  savePeriod: async p => {
+    cache.clear()
+    return supabase.from('payroll_periods').insert(p)
+  },
 
-  reopenPeriod: id => supabase.from('payroll_periods').update({ status: 'open', closed_at: null }).eq('id', id),
+  closePeriod: async (id, total) => {
+    cache.clear()
+    return supabase.from('payroll_periods').update({
+      status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
+    }).eq('id', id)
+  },
 
-  monthlyPeriods: async () => {
+  reopenPeriod: async id => {
+    cache.clear()
+    return supabase.from('payroll_periods').update({ status: 'open', closed_at: null }).eq('id', id)
+  },
+
+  monthlyPeriods: () => cachedQuery('monthlyPeriods', async () => {
     const { data, error } = await supabase.from('monthly_periods').select('*').order('date_from', { ascending: false })
     if (error) throw error
     return data
-  },
+  }),
 
   openMonthlyPeriod: async () => {
     const { data, error } = await supabase
@@ -312,15 +392,25 @@ export const DB = {
     return data || null
   },
 
-  saveMonthlyPeriod: p => supabase.from('monthly_periods').insert(p),
-  closeMonthlyPeriod: (id, total) => supabase.from('monthly_periods').update({
-    status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
-  }).eq('id', id),
+  saveMonthlyPeriod: async p => {
+    cache.clear()
+    return supabase.from('monthly_periods').insert(p)
+  },
 
-  reopenMonthlyPeriod: id => supabase.from('monthly_periods').update({ status: 'open', closed_at: null }).eq('id', id),
+  closeMonthlyPeriod: async (id, total) => {
+    cache.clear()
+    return supabase.from('monthly_periods').update({
+      status: 'closed', closed_at: new Date().toISOString(), total_payroll: total
+    }).eq('id', id)
+  },
+
+  reopenMonthlyPeriod: async id => {
+    cache.clear()
+    return supabase.from('monthly_periods').update({ status: 'open', closed_at: null }).eq('id', id)
+  },
 
   // ── Attendance Logs API ───────────────────────────────────────────
-  attendanceLogs: async () => {
+  attendanceLogs: () => cachedQuery('attendanceLogs', async () => {
     try {
       const { data, error } = await supabase.from('attendance_logs').select('*').order('created_at', { ascending: false })
       if (!error && data) return data
@@ -329,9 +419,10 @@ export const DB = {
     }
     const local = localStorage.getItem('thulir_attendance_logs')
     return local ? JSON.parse(local) : []
-  },
+  }),
 
   saveAttendanceLog: async log => {
+    cache.clear()
     try {
       const { data, error } = await supabase.from('attendance_logs').upsert(log)
       if (!error) return data
@@ -347,6 +438,7 @@ export const DB = {
   },
 
   approveAttendanceLogs: async (ids) => {
+    cache.clear()
     try {
       const { data, error } = await supabase.from('attendance_logs').update({ status: 'approved' }).in('id', ids)
       if (!error) return data
@@ -377,7 +469,6 @@ export const DB = {
   // ── Calculation Helpers ──────────────────────────────────────────
   perDay: (emp, wd) => (emp?.salary || 0) / (wd || 26),
 
-  // Optimized versions should use Maps passed from components
   weekSalary: (entry, emp, wd) => {
     if (!emp) return 0
     const pd = emp.salary / (wd || 26)
@@ -398,7 +489,6 @@ export const DB = {
     return Math.max(0, Math.round(pd * days + addSal - advD - shrD))
   },
 
-  // Legacy fallback (O(N^2), use sparingly)
   totalAdvGiven: (name, advances) => advances.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
   totalShrGiven: (name, shortages) => shortages.filter(a => a.name === name).reduce((s, a) => s + Number(a.amount), 0),
   totalAdvDeducted: (name, weekly, monthly = []) => {
