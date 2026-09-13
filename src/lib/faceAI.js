@@ -50,10 +50,67 @@ export function generateFaceDescriptor(imageDataUrl) {
   })
 }
 
+// Validate captured image quality (reject pitch-black, blank, or covered camera snaps)
+export function validateSnapshotImage(imageDataUrl) {
+  return new Promise((resolve) => {
+    if (!imageDataUrl || imageDataUrl.length < 500) {
+      resolve({ valid: false, reason: 'Snapshot image is empty or invalid.' })
+      return
+    }
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = imageDataUrl
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, 64, 64)
+      const data = ctx.getImageData(0, 0, 64, 64).data
+
+      let totalBrightness = 0
+      let pixelValues = []
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]
+        const g = data[i + 1]
+        const b = data[i + 2]
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b
+        totalBrightness += lum
+        pixelValues.push(lum)
+      }
+
+      const avgBrightness = totalBrightness / pixelValues.length
+      
+      // Calculate variance / standard deviation to detect blank single-color snaps
+      let varianceSum = 0
+      for (let v of pixelValues) {
+        varianceSum += (v - avgBrightness) * (v - avgBrightness)
+      }
+      const stdDev = Math.sqrt(varianceSum / pixelValues.length)
+
+      // Reject if pitch dark (avg brightness < 15) or zero contrast/blank (stdDev < 5)
+      if (avgBrightness < 15) {
+        resolve({ valid: false, reason: 'Camera snapshot is pitch black. Please turn on lights or uncover camera.' })
+      } else if (stdDev < 5) {
+        resolve({ valid: false, reason: 'Snapshot lacks facial features (solid color / covered camera).' })
+      } else {
+        resolve({ valid: true, avgBrightness: Math.round(avgBrightness), stdDev: Math.round(stdDev) })
+      }
+    }
+    img.onerror = () => resolve({ valid: false, reason: 'Failed to process camera image.' })
+  })
+}
+
 // Compare live selfie descriptor vs stored reference descriptor
 export function compareFaceDescriptors(desc1, desc2) {
-  if (!desc1 || !desc2 || !Array.isArray(desc1) || !Array.isArray(desc2)) {
-    return { score: 92, verified: true } // Default fallback high match
+  if (!desc1 || !Array.isArray(desc1)) {
+    return { score: 0, distance: '1.000', verified: false, reason: 'No live face captured' }
+  }
+
+  if (!desc2 || !Array.isArray(desc2) || desc2.length === 0) {
+    return { score: 0, distance: '1.000', verified: false, reason: 'No reference profile registered' }
   }
 
   let sumDiff = 0
@@ -64,11 +121,14 @@ export function compareFaceDescriptors(desc1, desc2) {
   }
 
   const distance = Math.sqrt(sumDiff / len)
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance * 1.5) * 100)))
-  const verified = confidence >= 70
+  
+  // Calculate match percentage score (0% to 100%)
+  // Distance 0.0 -> 100% Match; Distance 0.25 -> 50% Match; Distance 0.5+ -> 0% Match
+  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance * 2.0) * 100)))
+  const verified = confidence >= 65
 
   return {
-    score: Math.max(78, confidence), // Realistic high accuracy score for UI display
+    score: confidence,
     distance: distance.toFixed(3),
     verified
   }

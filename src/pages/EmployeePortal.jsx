@@ -10,7 +10,14 @@ import {
   AlertTriangle, LogOut, UserCheck, ShieldCheck, 
   Calendar, FileText, Download, Sparkles, Eye, Printer, Landmark
 } from 'lucide-react'
-import { captureSnapshot, generateFaceDescriptor, compareFaceDescriptors, getAddressFromCoords, checkGeofence } from '../lib/faceAI'
+import { 
+  captureSnapshot, 
+  generateFaceDescriptor, 
+  compareFaceDescriptors, 
+  validateSnapshotImage,
+  getAddressFromCoords, 
+  checkGeofence 
+} from '../lib/faceAI'
 
 export default function EmployeePortal() {
   const { currentEmployee, updateCurrentEmployee, logout } = useAuth()
@@ -216,7 +223,16 @@ export default function EmployeePortal() {
       return
     }
 
-    // 2. Generate live face descriptor
+    // 2. Validate image content & contrast (reject dark/blank/covered snaps)
+    const imgValidation = await validateSnapshotImage(photoBase64)
+    if (!imgValidation.valid) {
+      toast.error(`🔴 Image Rejected: ${imgValidation.reason}`)
+      setVerifying(false)
+      setFaceStatus('error')
+      return
+    }
+
+    // 3. Generate live face descriptor vector
     const liveDescriptor = await generateFaceDescriptor(photoBase64)
 
     // ── FIRST TIME FACE REGISTRATION ──
@@ -261,10 +277,19 @@ export default function EmployeePortal() {
       }
     }
 
-    // 3. AI Face Comparison against employee reference descriptor
-    const match = compareFaceDescriptors(liveDescriptor, currentEmployee?.face_descriptor)
+    // 4. AI Face Comparison against employee reference descriptor
+    const refDescriptor = currentEmployee?.face_descriptor || currentEmployee?.faceDescriptor
+    const match = compareFaceDescriptors(liveDescriptor, refDescriptor)
     
-    // 4. Geofence Check
+    // Strict Face Match Check
+    if (!match.verified || match.score < 60) {
+      setFaceStatus('error')
+      toast.error(`🔴 Face Match Failed (${match.score}% match). Selfie does not match registered face profile!`)
+      setVerifying(false)
+      return
+    }
+
+    // 5. Geofence Check
     const isStoreLocation = locationData?.inBounds ?? true
     const currentLocAddress = locationData?.address || 'Thulir Agency Store, Erode'
 
@@ -292,7 +317,7 @@ export default function EmployeePortal() {
 
       await DB.saveAttendanceLog(newLog)
       setFaceStatus('success')
-      toast.success(`Check-In Recorded! AI Face Match: ${match.score}% 🟢`)
+      toast.success(`Check-In Verified! AI Face Match: ${match.score}% 🟢`)
     } else {
       // Check-Out
       const updatedLog = {
