@@ -55,7 +55,10 @@ export const DB = {
       joining_date: emp.joiningDate || null,
       relieving_date: emp.relievingDate || null,
       phone: emp.phone || null,
-      address: emp.address || null
+      address: emp.address || null,
+      pin_code: emp.pinCode || '1234',
+      profile_photo: emp.profilePhoto || null,
+      face_descriptor: emp.faceDescriptor || null
     })
     if (error) throw error
     return data
@@ -71,7 +74,10 @@ export const DB = {
       joining_date: emp.joiningDate || null,
       relieving_date: emp.relievingDate || null,
       phone: emp.phone || null,
-      address: emp.address || null
+      address: emp.address || null,
+      pin_code: emp.pinCode || '1234',
+      profile_photo: emp.profilePhoto || null,
+      face_descriptor: emp.faceDescriptor || null
     }).eq('id', emp.id)
     if (error) throw error
     return data
@@ -299,6 +305,43 @@ export const DB = {
   }).eq('id', id),
 
   reopenMonthlyPeriod: id => supabase.from('monthly_periods').update({ status: 'open', closed_at: null }).eq('id', id),
+
+  // ── Attendance Logs API ───────────────────────────────────────────
+  attendanceLogs: async () => {
+    try {
+      const { data, error } = await supabase.from('attendance_logs').select('*').order('created_at', { ascending: false })
+      if (!error && data) return data
+    } catch (e) {
+      console.warn('Supabase attendance_logs fallback to localStorage')
+    }
+    const local = localStorage.getItem('thulir_attendance_logs')
+    return local ? JSON.parse(local) : []
+  },
+
+  saveAttendanceLog: async log => {
+    try {
+      const { data, error } = await supabase.from('attendance_logs').upsert(log)
+      if (!error) return data
+    } catch (e) {
+      console.warn('Supabase attendance upsert fallback to localStorage')
+    }
+    const local = JSON.parse(localStorage.getItem('thulir_attendance_logs') || '[]')
+    const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
+    if (idx >= 0) local[idx] = { ...local[idx], ...log }
+    else local.unshift(log)
+    localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+    return log
+  },
+
+  approveAttendanceLogs: async (ids) => {
+    try {
+      const { data, error } = await supabase.from('attendance_logs').update({ status: 'approved' }).in('id', ids)
+      if (!error) return data
+    } catch (e) {}
+    const local = JSON.parse(localStorage.getItem('thulir_attendance_logs') || '[]')
+    local.forEach(l => { if (ids.includes(l.id)) l.status = 'approved' })
+    localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+  },
 
   // ── High-performance Lookup Helpers ───────────────────────────────
   createEmpMap: (emps) => {

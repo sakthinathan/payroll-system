@@ -9,11 +9,11 @@ import {
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
   Download, Database, Key, LogOut, Menu, X,
-  User, Settings, Info, ChevronDown
+  User, Settings, Info, ChevronDown, UserCheck, ShieldCheck
 } from 'lucide-react'
 
 export function Layout({ children, title }) {
-  const { user, logout } = useAuth()
+  const { user, role, currentEmployee, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -29,12 +29,17 @@ export function Layout({ children, title }) {
     }
   }, [location.pathname])
 
-  const navItems = [
+  const navItems = role === 'employee' ? [
+    { section: 'Self-Service', items: [
+      { path: '/my-attendance', label: 'My Attendance & Punch', icon: <UserCheck size={18} /> },
+    ]}
+  ] : [
     { section: 'Overview', items: [
       { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     ]},
     { section: 'Personnel', items: [
       { path: '/employees', label: 'Employees', icon: <Users size={18} /> },
+      { path: '/attendance-approval', label: 'Attendance Review', icon: <ShieldCheck size={18} /> },
       { path: '/bank', label: 'Bank Master', icon: <Landmark size={18} /> },
     ]},
     { section: 'Payroll Entry', items: [
@@ -125,13 +130,13 @@ export function Layout({ children, title }) {
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               >
                 <div className="desktop-only" style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>System Administrator</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '1px' }}>Thulir Agency</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>{role === 'employee' ? (currentEmployee?.name || 'Employee') : 'System Administrator'}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '1px' }}>{role === 'employee' ? 'Thulir Staff' : 'Thulir Agency'}</div>
                 </div>
                 <div 
                   style={{ width: 40, height: 40, borderRadius: 9999, background: 'var(--brit-red)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, border: '2px solid var(--brit-gold)', boxShadow: '0 4px 15px rgba(227, 30, 36, 0.3)' }}
                 >
-                  {user?.email?.[0].toUpperCase() || 'A'}
+                  {role === 'employee' ? (currentEmployee?.name?.[0]?.toUpperCase() || 'E') : (user?.email?.[0].toUpperCase() || 'A')}
                 </div>
                 <ChevronDown size={16} color="var(--navy)" style={{ transform: profileMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
@@ -161,8 +166,8 @@ export function Layout({ children, title }) {
                       }}
                     >
                       <div style={{ padding: '12px 20px 10px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--navy)' }}>System Administrator</div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--slate)', wordBreak: 'break-all' }}>{user?.email || 'admin@thuliragency.com'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--navy)' }}>{role === 'employee' ? (currentEmployee?.name || 'Employee') : 'System Administrator'}</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--slate)', wordBreak: 'break-all' }}>{role === 'employee' ? `${currentEmployee?.emp_id || 'EMP'} • Staff Access` : (user?.email || 'admin@thuliragency.com')}</div>
                       </div>
 
                       <button 

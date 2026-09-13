@@ -14,6 +14,8 @@ import { MonthlyPeriods }  from './pages/MonthlyPeriods'
 import Ledger from './pages/Ledger'
 import { Payslip } from './pages/PayslipBackup'
 import Downloads    from './pages/Downloads'
+import EmployeePortal from './pages/EmployeePortal'
+import AttendanceApproval from './pages/AttendanceApproval'
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -24,9 +26,9 @@ function Protected({ children }) {
 }
 
 function LoginRoute() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const location = useLocation()
-  const target = location.state?.from?.pathname || localStorage.getItem('last_visited_route') || '/'
+  const target = location.state?.from?.pathname || (role === 'employee' ? '/my-attendance' : localStorage.getItem('last_visited_route') || '/')
   
   if (user) {
     return <Navigate to={target} replace />
@@ -45,6 +47,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
+      <Route path="/my-attendance" element={<Protected><EmployeePortal /></Protected>} />
+      <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
       <Route path="/employees" element={<Protected><Employees /></Protected>} />
       <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
       <Route path="/periods" element={<Protected><Periods /></Protected>} />
