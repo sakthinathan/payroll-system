@@ -16,7 +16,12 @@ export function Layout({ children, title }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
 
-  useEffect(() => setIsMenuOpen(false), [location.pathname])
+  useEffect(() => {
+    setIsMenuOpen(false)
+    if (location.pathname && location.pathname !== '/login') {
+      localStorage.setItem('last_visited_route', location.pathname)
+    }
+  }, [location.pathname])
 
   const navItems = [
     { section: 'Overview', items: [

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BRAND } from '../config/branding'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Landmark } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -13,6 +13,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const from = location.state?.from?.pathname || localStorage.getItem('last_visited_route') || '/'
 
   const doLogin = async (e) => {
     e?.preventDefault()
@@ -20,7 +23,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/')
+      navigate(from, { replace: true })
     } catch (err) {
       setLoading(false)
       setError(err.message || 'Invalid email or password')
@@ -29,62 +32,48 @@ export default function Login() {
   }
 
   return (
-    <div className="login-container bg-mesh" id="loginPage" style={{ display: 'flex' }}>
-      {/* Animated Background Elements */}
-      <motion.div 
-        animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        style={{ position: 'absolute', top: -100, left: -100, width: 400, height: 400, background: 'rgba(46, 117, 182, 0.1)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }}
-      />
-      <motion.div 
-        animate={{ scale: [1, 1.3, 1], rotate: [0, -90, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        style={{ position: 'absolute', bottom: -100, right: -100, width: 400, height: 400, background: 'rgba(31, 56, 100, 0.15)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }}
-      />
-
+    <div className="login-container bg-mesh" id="loginPage">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 10 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 10 }}
       >
         {/* Header Section */}
         <div className="login-header-v2">
           <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
-            className="login-logo-v2 glow-blue"
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+            className="login-logo-v2"
           >
-            <span style={{ fontSize: 42 }}>{BRAND.logoEmoji}</span>
+            <Landmark size={32} color="#ffffff" />
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            style={{ color: 'white', fontSize: 32, fontWeight: 800, letterSpacing: '-0.5px', marginBottom: 8 }}
+            transition={{ delay: 0.2 }}
+            style={{ color: '#ffffff', fontSize: 26, fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 6 }}
           >
             {BRAND.name}
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, fontWeight: 500, letterSpacing: '0.5px' }}
+            transition={{ delay: 0.3 }}
+            style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500, letterSpacing: '0.5px' }}
           >
-            {BRAND.tagline}
+            {BRAND.tagline || 'Smart Automated Payroll System'}
           </motion.p>
         </div>
 
         {/* Login Card */}
         <motion.div 
-          whileHover={{ y: -5 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          className="login-card-v2 shadow-lg"
+          className="login-card-v2"
         >
-          <div style={{ marginBottom: 32 }}>
-            <h2 style={{ color: 'var(--navy)', fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Welcome back</h2>
-            <p style={{ color: 'var(--mid)', fontSize: 14 }}>Please enter your credentials</p>
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ color: '#0f172a', fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Welcome back</h2>
+            <p style={{ color: '#64748b', fontSize: 14 }}>Please enter your credentials</p>
           </div>
 
           <form onSubmit={doLogin}>
@@ -118,7 +107,7 @@ export default function Login() {
                 <button 
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--mid)' }}
+                  style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }}
                 >
                   {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -129,11 +118,11 @@ export default function Login() {
               {error && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   className="error-toast"
                 >
-                  <span style={{ fontSize: 16 }}>⚠️</span> {error}
+                  <span>⚠️</span> {error}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -162,10 +151,10 @@ export default function Login() {
         <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          style={{ textAlign: 'center', marginTop: 32, color: 'rgba(255, 255, 255, 0.3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}
+          transition={{ delay: 0.5 }}
+          style={{ textAlign: 'center', marginTop: 28, color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px' }}
         >
-          {BRAND.address} · {BRAND.footer}
+          SECURE CLOUD ACCESS
         </motion.p>
       </motion.div>
     </div>

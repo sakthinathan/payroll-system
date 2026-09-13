@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './lib/auth'
 import { useEffect } from 'react'
@@ -17,9 +17,21 @@ import Downloads    from './pages/Downloads'
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return null
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />
   return children
+}
+
+function LoginRoute() {
+  const { user } = useAuth()
+  const location = useLocation()
+  const target = location.state?.from?.pathname || localStorage.getItem('last_visited_route') || '/'
+  
+  if (user) {
+    return <Navigate to={target} replace />
+  }
+  return <Login />
 }
 
 function AppRoutes() {
@@ -31,7 +43,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login" element={<LoginRoute />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/employees" element={<Protected><Employees /></Protected>} />
       <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
