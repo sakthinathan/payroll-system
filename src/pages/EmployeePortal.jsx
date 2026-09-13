@@ -117,7 +117,7 @@ export default function EmployeePortal() {
     setCameraActive(false)
   }
 
-  // Handle Punch (Check-In or Check-Out)
+  // Handle Punch (Check-In or Check-Out or Register)
   const handlePunch = async () => {
     if (!videoRef.current) return
     setVerifying(true)
@@ -132,6 +132,29 @@ export default function EmployeePortal() {
 
     // 2. Generate live face descriptor
     const liveDescriptor = await generateFaceDescriptor(photoBase64)
+
+    // ── FIRST TIME FACE REGISTRATION ──
+    if (actionType === 'register') {
+      try {
+        const updatedEmp = {
+          ...currentEmployee,
+          profilePhoto: photoBase64,
+          faceDescriptor: liveDescriptor
+        }
+        await DB.updateEmployee(updatedEmp)
+        localStorage.setItem('thulir_current_employee', JSON.stringify({ ...currentEmployee, profile_photo: photoBase64, face_descriptor: liveDescriptor }))
+        toast.success('🎉 Face Profile Registered Successfully! You can now check in.')
+        stopCamera()
+        setVerifying(false)
+        loadData()
+        return
+      } catch (err) {
+        console.error('Face registration error:', err)
+        toast.error('Failed to register face profile. Please try again.')
+        setVerifying(false)
+        return
+      }
+    }
 
     // 3. AI Face Comparison against employee reference descriptor
     const match = compareFaceDescriptors(liveDescriptor, currentEmployee?.face_descriptor)
@@ -199,6 +222,8 @@ export default function EmployeePortal() {
     loadData()
   }
 
+  const isFaceRegistered = !!(currentEmployee?.profile_photo || currentEmployee?.face_descriptor)
+
   return (
     <Layout title="Employee Portal">
       {/* ── HEADER BANNER ── */}
@@ -207,6 +232,11 @@ export default function EmployeePortal() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <span className="badge badge-green">Employee Active Session</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: 1 }}>{currentEmployee?.emp_id || 'STAFF'}</span>
+            {isFaceRegistered ? (
+              <span className="badge badge-green">🟢 Face Profile Registered</span>
+            ) : (
+              <span className="badge badge-red">🔴 Registration Pending</span>
+            )}
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)', letterSpacing: '-0.5px' }}>{empName}</h2>
           <p style={{ fontSize: 13, color: 'var(--slate)', fontWeight: 600 }}>Thulir Agency • Daily Self-Service Attendance</p>
@@ -221,6 +251,23 @@ export default function EmployeePortal() {
           </div>
         </div>
       </div>
+
+      {/* ── FIRST-TIME FACE REGISTRATION NOTICE ── */}
+      {!isFaceRegistered && !cameraActive && (
+        <div style={{ background: '#FFF9E6', border: '2px solid var(--brit-gold)', borderRadius: 24, padding: 32, marginBottom: 28, textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, background: 'var(--brit-red)', color: '#fff', borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 8px 25px rgba(227,30,36,0.3)' }}>
+            <Sparkles size={32} />
+          </div>
+          <h3 style={{ fontSize: 22, fontWeight: 900, color: 'var(--navy)', marginBottom: 8 }}>First-Time Face Profile Setup Required</h3>
+          <p style={{ fontSize: 14, color: 'var(--slate)', fontWeight: 600, maxWidth: 540, margin: '0 auto 24px', lineHeight: 1.6 }}>
+            Welcome, <strong>{empName}</strong>! Before making your first daily check-in, please register your face profile photo. This 1-time setup will be used to verify your daily check-in selfies.
+          </p>
+          <button className="btn btn-primary" style={{ padding: '16px 36px', fontSize: 15 }} onClick={() => startCamera('register')}>
+            <Camera size={20} />
+            <span>Register Face Profile (1-Time Setup)</span>
+          </button>
+        </div>
+      )}
 
       {/* ── MISSING CHECKOUT ALERT BANNER ── */}
       {missingLog && (
@@ -241,7 +288,7 @@ export default function EmployeePortal() {
       )}
 
       {/* ── DAILY CHECK-IN / CHECK-OUT CARD ── */}
-      <div className="glass-panel" style={{ padding: 32, marginBottom: 28 }}>
+      <div className="glass-panel" style={{ padding: 32, marginBottom: 28, opacity: !isFaceRegistered ? 0.6 : 1, pointerEvents: !isFaceRegistered ? 'none' : 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 900, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Today's Attendance Status</h3>
@@ -311,7 +358,7 @@ export default function EmployeePortal() {
               </button>
               <button className="btn btn-primary" style={{ padding: '14px 32px' }} disabled={verifying} onClick={handlePunch}>
                 <ShieldCheck size={18} />
-                <span>{verifying ? 'Verifying AI Face...' : actionType === 'in' ? 'Snap & Check In' : 'Snap & Check Out'}</span>
+                <span>{verifying ? 'Processing...' : actionType === 'register' ? 'Snap & Register Face' : actionType === 'in' ? 'Snap & Check In' : 'Snap & Check Out'}</span>
               </button>
             </div>
           </div>
