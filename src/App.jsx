@@ -45,6 +45,15 @@ function Protected({ children }) {
   return children
 }
 
+function AdminOnly({ children }) {
+  const { user, role, loading } = useAuth()
+  const location = useLocation()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />
+  if (role === 'employee') return <Navigate to="/my-attendance" replace />
+  return children
+}
+
 function LoginRoute() {
   const { user, role } = useAuth()
   const location = useLocation()
@@ -67,24 +76,24 @@ function AppRoutes() {
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
-        <Route path="/" element={<Protected><Dashboard /></Protected>} />
+        <Route path="/" element={<AdminOnly><Dashboard /></AdminOnly>} />
         <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
         <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />
         <Route path="/my-face" element={<Protected><EmployeePortal defaultTab="face" /></Protected>} />
-        <Route path="/attendance-approval" element={<Protected><AttendanceApproval /></Protected>} />
-        <Route path="/employees" element={<Protected><Employees /></Protected>} />
-        <Route path="/weekly" element={<Protected><Weekly /></Protected>} />
-        <Route path="/periods" element={<Protected><Periods /></Protected>} />
-        <Route path="/monthly" element={<Protected><Monthly /></Protected>} />
-        <Route path="/ledger" element={<Protected><Ledger /></Protected>} />
-        <Route path="/monthly-periods" element={<Protected><MonthlyPeriods /></Protected>} />
-        <Route path="/advances" element={<Protected><Advances /></Protected>} />
-        <Route path="/shortages" element={<Protected><Shortages /></Protected>} />
-        <Route path="/deductions" element={<Protected><Deductions /></Protected>} />
-        <Route path="/bank" element={<Protected><Bank /></Protected>} />
-        <Route path="/payslip" element={<Protected><Payslip /></Protected>} />
-        <Route path="/downloads" element={<Protected><Downloads /></Protected>} />
-        <Route path="/changepw" element={<Protected><ChangePassword /></Protected>} />
+        <Route path="/attendance-approval" element={<AdminOnly><AttendanceApproval /></AdminOnly>} />
+        <Route path="/employees" element={<AdminOnly><Employees /></AdminOnly>} />
+        <Route path="/weekly" element={<AdminOnly><Weekly /></AdminOnly>} />
+        <Route path="/periods" element={<AdminOnly><Periods /></AdminOnly>} />
+        <Route path="/monthly" element={<AdminOnly><Monthly /></AdminOnly>} />
+        <Route path="/ledger" element={<AdminOnly><Ledger /></AdminOnly>} />
+        <Route path="/monthly-periods" element={<AdminOnly><MonthlyPeriods /></AdminOnly>} />
+        <Route path="/advances" element={<AdminOnly><Advances /></AdminOnly>} />
+        <Route path="/shortages" element={<AdminOnly><Shortages /></AdminOnly>} />
+        <Route path="/deductions" element={<AdminOnly><Deductions /></AdminOnly>} />
+        <Route path="/bank" element={<AdminOnly><Bank /></AdminOnly>} />
+        <Route path="/payslip" element={<AdminOnly><Payslip /></AdminOnly>} />
+        <Route path="/downloads" element={<AdminOnly><Downloads /></AdminOnly>} />
+        <Route path="/changepw" element={<AdminOnly><ChangePassword /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
