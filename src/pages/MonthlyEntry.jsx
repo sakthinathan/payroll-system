@@ -55,6 +55,8 @@ function downloadMonthlyExcel(label, entries, emps, wd) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${label.replace(/\s+/g,'-')}-Monthly-Payroll.csv`; a.click()
 }
 
+const WORK_TYPES = ['Packing', 'Sales Man', 'Delivery', 'Driver', 'Overtime', 'Other']
+
 function InlineCell({ value, onSave, color }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value)
@@ -62,6 +64,64 @@ function InlineCell({ value, onSave, color }) {
   const commit = () => { setEditing(false); const num = Number(val); if (num !== value) onSave(num) }
   if (editing) return <input type="number" min={0} value={val} autoFocus onChange={e => setVal(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') { setVal(value); setEditing(false) } }} style={{ width:68, height:32, textAlign:'center', border:'2px solid var(--blue)', borderRadius:8, fontFamily:'var(--mono)', fontSize:13, fontWeight:700, outline:'none', background:'#fff' }} />
   return <span onClick={() => setEditing(true)} style={{ cursor:'pointer', fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:color||'var(--navy)', padding:'6px 12px', borderRadius:8, display:'inline-block', border:'1px dashed #cbd5e1', transition:'all .2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor='var(--blue)'; e.currentTarget.style.background='var(--bg)' }} onMouseLeave={e => { e.currentTarget.style.borderColor='#cbd5e1'; e.currentTarget.style.background='transparent' }}>{value}</span>
+}
+
+function InlineSelectCell({ value, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [custom, setCustom] = useState(false)
+  const [val, setVal] = useState(value || '')
+
+  useEffect(() => { setVal(value || '') }, [value])
+
+  const commit = (newVal) => {
+    setEditing(false)
+    setCustom(false)
+    if (newVal !== value) onSave(newVal)
+  }
+
+  if (editing) {
+    if (custom) {
+      return (
+        <input 
+          type="text" 
+          value={val} 
+          autoFocus 
+          placeholder="Custom work..."
+          onChange={e => setVal(e.target.value)} 
+          onBlur={() => commit(val)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(val); if (e.key === 'Escape') { setVal(value || ''); setEditing(false); setCustom(false) } }}
+          style={{ width: 110, height: 32, padding: '0 8px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff' }} 
+        />
+      )
+    }
+    return (
+      <select 
+        value={WORK_TYPES.includes(val) ? val : (val ? 'Other' : '')} 
+        autoFocus 
+        onChange={e => {
+          if (e.target.value === 'Other') {
+            setCustom(true)
+          } else {
+            commit(e.target.value)
+          }
+        }} 
+        onBlur={() => setEditing(false)}
+        style={{ height: 32, padding: '0 6px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff', cursor: 'pointer' }}
+      >
+        <option value="">— Select —</option>
+        {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+    )
+  }
+
+  return (
+    <span 
+      onClick={() => setEditing(true)} 
+      style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: value ? 'var(--blue)' : '#94a3b8', padding: '4px 8px', borderRadius: 6, display: 'inline-block', border: '1px dashed #cbd5e1', transition: 'all .2s' }}
+    >
+      {value || '+ Type'}
+    </span>
+  )
 }
 
 export function Monthly() {
@@ -117,7 +177,19 @@ export function Monthly() {
     setAllMonthly(prev => prev.map(m => m.id === entry.id ? { ...m, [field]: newVal } : m))
     setSaving(entry.id)
     try {
-      await DB.updateMonthly({ id: entry.id, name: entry.name, monthLabel: entry.month_label, date: entry.date, periodId: entry.period_id, daysWorked: field === 'days_worked' ? newVal : (entry.days_worked || 0), leaves: field === 'leaves' ? newVal : (entry.leaves || 0), advDeducted: field === 'adv_deducted' ? newVal : (entry.adv_deducted || 0), shrDeducted: field === 'shr_deducted' ? newVal : (entry.shr_deducted || 0) })
+      await DB.updateMonthly({ 
+        id: entry.id, 
+        name: entry.name, 
+        monthLabel: entry.month_label, 
+        date: entry.date, 
+        periodId: entry.period_id, 
+        daysWorked: field === 'days_worked' ? newVal : (entry.days_worked || 0), 
+        leaves: field === 'leaves' ? newVal : (entry.leaves || 0), 
+        advDeducted: field === 'adv_deducted' ? newVal : (entry.adv_deducted || 0), 
+        shrDeducted: field === 'shr_deducted' ? newVal : (entry.shr_deducted || 0),
+        additionalSalary: field === 'additional_salary' ? newVal : (entry.additional_salary || 0),
+        additionalWorkType: field === 'additional_work_type' ? newVal : (entry.additional_work_type || '')
+      })
       toast.success('Saved', { duration: 800 })
     } catch (err) { toast.error('Failed'); load() } finally { setSaving(null) }
   }
@@ -126,7 +198,7 @@ export function Monthly() {
     if (adding.has(emp.name)) return
     setAdding(prev => new Set([...prev, emp.name]))
     try {
-      await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:wd, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
+      await DB.saveMonthly({ id:uid(), name:emp.name, monthLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:wd, leaves:0, advDeducted:0, shrDeducted:0, additionalSalary:0, additionalWorkType:'', periodId:activePeriod.id })
       load()
     } catch (err) { toast.error('Failed') } finally { setAdding(prev => { const n = new Set(prev); n.delete(emp.name); return n }) }
   }
@@ -139,7 +211,7 @@ export function Monthly() {
       const inserts = pendingEmps.map(emp => ({
         id: uid(), name: emp.name, monthLabel: activePeriod.label, date: activePeriod.date_from, 
         daysWorked: bulkForm.daysWorked, leaves: bulkForm.leaves, advDeducted: bulkForm.advDeducted, 
-        shrDeducted: bulkForm.shrDeducted, periodId: activePeriod.id
+        shrDeducted: bulkForm.shr_deducted, additionalSalary: 0, additionalWorkType: '', periodId: activePeriod.id
       }))
       await Promise.all(inserts.map(DB.saveMonthly))
       toast.success('Added staff successfully', { id: p })
@@ -148,57 +220,51 @@ export function Monthly() {
   }
 
   const del = async (id) => {
-    try {
-      await DB.deleteMonthly(id)
-      setConfirm(null)
-      load()
-      toast.success('Deleted successfully')
-    } catch (err) { toast.error('Failed to delete') }
-  }
-
-  const startPeriod = async () => {
-    if (!newPeriod.dateFrom || !newPeriod.dateTo) { toast.error('Select dates'); return }
-    await DB.saveMonthlyPeriod({ id:uid(), label:newPeriod.label, month_name:newPeriod.label, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' })
-    toast.success(`✅ "${newPeriod.label}" started!`); load()
+    await DB.deleteMonthly(id)
+    setConfirm(null)
+    load()
   }
 
   const closePayroll = async () => {
     await DB.closeMonthlyPeriod(activePeriod.id, totalPay)
-    downloadMonthlyExcel(activePeriod.label, [...allMonthly], [...emps], wd)
-    setTimeout(() => downloadMonthlyBankFile(activePeriod.label, [...allMonthly], [...emps], bankList, wd), 600)
-    setClosedData({ label: activePeriod.label, entries: [...allMonthly], allEmps: [...emps] }); setCloseConfirm(false); setActivePeriod(null); load()
+    const label = activePeriod.label, entries = [...allMonthly]
+    downloadMonthlyExcel(label, entries, emps, wd)
+    setTimeout(() => downloadMonthlyBankFile(label, entries, emps, bankList, wd), 600)
+    setClosedData({ label, entries }); setCloseConfirm(false); setActivePeriod(null); load()
   }
 
   if (loading) return <Layout title="Monthly Entry"><Spinner /></Layout>
 
   if (!activePeriod) {
     return (
-      <Layout title="Monthly Entry">
+      <Layout title="Monthly Payroll Processing">
         <AnimatePresence>
           {closedData && (
-            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} style={{ background: 'var(--white)', border: '1px solid var(--blue)', borderLeft: '6px solid var(--blue)', borderRadius: 16, padding: '24px 32px', marginBottom: 32, boxShadow: 'var(--shadow)' }}>
+            <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} style={{ background: 'var(--white)', border: '1px solid var(--emerald)', borderLeft: '6px solid var(--emerald)', borderRadius: 16, padding: '24px 32px', marginBottom: 32, boxShadow: 'var(--shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--blue)', marginBottom: 4 }}>✅ Monthly Period Closed</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--emerald)', marginBottom: 4 }}>✅ Monthly Payroll Finalized</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>{closedData.label}</div>
                 </div>
-                <button className="btn" style={{ background: 'var(--grey)', color: 'var(--slate)', border: 'none' }} onClick={() => setClosedData(null)}>Dismiss</button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
-          <Panel title="Initialize Monthly Payroll" subtitle={`Managing ${emps.length} staff members`}>
+          <Panel title="Initialize Monthly Cycle" subtitle="Begin monthly payroll calculation">
             <div className="form-grid cols2" style={{ marginBottom: 24 }}>
               <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
-              <Field label="Year"><select className="form-input" value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year:Number(e.target.value) }))}>{[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map(y => <option key={y}>{y}</option>)}</select></Field>
+              <Field label="Year"><input type="number" className="form-input" value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year:Number(e.target.value) }))} /></Field>
             </div>
             <div style={{ background: 'var(--bg)', padding: '24px', borderRadius: 20, border: '1px solid var(--border)', marginBottom: 24 }}>
-              <strong style={{ fontSize: 18, color: 'var(--navy)' }}>{newPeriod.label}</strong>
-              <div style={{ fontSize: 13, color: 'var(--slate)', marginTop: 4 }}>Full month processing cycle</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)', opacity: 0.5, textTransform: 'uppercase', marginBottom: 12 }}>Auto-Generated Details</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: 18, color: 'var(--navy)' }}>{newPeriod.label}</strong>
+                <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--slate)' }}>{new Date(newPeriod.dateFrom).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} — {new Date(newPeriod.dateTo).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</div>
+              </div>
             </div>
-            <button className="btn btn-blue" style={{ width: '100%', padding: '16px', justifyContent: 'center' }} onClick={startPeriod}>
+            <button className="btn btn-blue" style={{ width: '100%', padding: '16px', justifyContent: 'center' }} onClick={() => DB.saveMonthlyPeriod({ id:uid(), label:newPeriod.label, month_name:`${MONTHS[newPeriod.month]} ${newPeriod.year}`, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' }).then(load)}>
               Start Monthly Payroll Cycle
             </button>
           </Panel>
@@ -230,7 +296,7 @@ export function Monthly() {
         <div className="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Staff Member</th><th>Gross</th><th style={{ textAlign:'center' }}>Days</th><th style={{ textAlign:'center' }}>Leaves</th><th style={{ textAlign:'center' }}>Adv Ded</th><th style={{ textAlign:'center' }}>Shr Ded</th><th>Net Salary</th><th style={{ textAlign:'right' }}>Action</th></tr>
+              <tr><th>Staff Member</th><th>Gross</th><th style={{ textAlign:'center' }}>Days</th><th style={{ textAlign:'center' }}>Leaves</th><th style={{ textAlign:'center' }}>Adv Ded</th><th style={{ textAlign:'center' }}>Shr Ded</th><th style={{ textAlign:'center' }}>Add. Salary</th><th style={{ textAlign:'center' }}>Work Type</th><th>Net Salary</th><th style={{ textAlign:'right' }}>Action</th></tr>
             </thead>
             <tbody>
               {filtered.map(m => (
@@ -241,6 +307,8 @@ export function Monthly() {
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(m.leaves||0)} max={31} onSave={v => inlineSave(m,'leaves',v)} /></td>
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(m.adv_deducted||0)} onSave={v => inlineSave(m,'adv_deducted',v)} color="var(--rose)" /></td>
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(m.shr_deducted||0)} onSave={v => inlineSave(m,'shr_deducted',v)} color="var(--rose)" /></td>
+                  <td style={{ textAlign:'center' }}><InlineCell value={Number(m.additional_salary||0)} onSave={v => inlineSave(m,'additional_salary',v)} color="var(--emerald)" /></td>
+                  <td style={{ textAlign:'center' }}><InlineSelectCell value={m.additional_work_type||''} onSave={v => inlineSave(m,'additional_work_type',v)} /></td>
                   <td className="amt amt-green" style={{ fontSize: 15 }}>{fmt(DB.monthlySalary(m, empMap[m.name], wd))}</td>
                   <td style={{ textAlign:'right' }}><button className="btn btn-sm btn-danger" onClick={() => setConfirm(m.id)}><Trash2 size={14}/></button></td>
                 </tr>
@@ -249,7 +317,7 @@ export function Monthly() {
                 <tr key={e.id} style={{ background: '#fdf4ff' }}>
                   <td style={{ opacity: 0.5 }}>{e.name}</td>
                   <td className="amt" style={{ opacity: 0.5 }}>{fmt(e.salary)}</td>
-                  <td colSpan={5} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--indigo)' }}>PENDING MONTHLY ENTRY</td>
+                  <td colSpan={7} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--indigo)' }}>PENDING MONTHLY ENTRY</td>
                   <td style={{ textAlign: 'right' }}><button className="btn btn-sm" style={{ background: 'var(--indigo)', color: '#fff' }} onClick={() => quickAdd(e)}>+ Quick Add</button></td>
                 </tr>
               ))}

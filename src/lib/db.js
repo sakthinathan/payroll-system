@@ -98,6 +98,8 @@ export const DB = {
     id: e.id, name: e.name, week_label: e.weekLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    additional_salary: e.additionalSalary || 0,
+    additional_work_type: e.additionalWorkType || '',
     period_id: e.periodId || null
   }),
 
@@ -105,6 +107,8 @@ export const DB = {
     name: e.name, week_label: e.weekLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    additional_salary: e.additionalSalary || 0,
+    additional_work_type: e.additionalWorkType || '',
   }).eq('id', e.id),
 
   deleteWeekly: id => supabase.from('weekly_entries').delete().eq('id', id),
@@ -120,6 +124,8 @@ export const DB = {
     id: e.id, name: e.name, month_label: e.monthLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    additional_salary: e.additionalSalary || 0,
+    additional_work_type: e.additionalWorkType || '',
     period_id: e.periodId || null
   }),
 
@@ -127,6 +133,8 @@ export const DB = {
     name: e.name, month_label: e.monthLabel, date: e.date || null,
     days_worked: e.daysWorked || 0, leaves: e.leaves || 0,
     adv_deducted: e.advDeducted || 0, shr_deducted: e.shrDeducted || 0,
+    additional_salary: e.additionalSalary || 0,
+    additional_work_type: e.additionalWorkType || '',
   }).eq('id', e.id),
 
   deleteMonthly: id => supabase.from('monthly_entries').delete().eq('id', id),
@@ -258,14 +266,20 @@ export const DB = {
     if (!emp) return 0
     const pd = emp.salary / (wd || 26)
     const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
-    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
+    const addSal = Number(entry.additional_salary || entry.additionalSalary || 0)
+    const advD = Number(entry.adv_deducted || entry.advDeducted || 0)
+    const shrD = Number(entry.shr_deducted || entry.shrDeducted || 0)
+    return Math.max(0, Math.round(pd * days + addSal - advD - shrD))
   },
 
   monthlySalary: (entry, emp, wd) => {
     if (!emp) return 0
     const pd = emp.salary / (wd || 26)
     const days = Number(entry.days_worked || 0) - Number(entry.leaves || 0)
-    return Math.max(0, Math.round(pd * days - Number(entry.adv_deducted || 0) - Number(entry.shr_deducted || 0)))
+    const addSal = Number(entry.additional_salary || entry.additionalSalary || 0)
+    const advD = Number(entry.adv_deducted || entry.advDeducted || 0)
+    const shrD = Number(entry.shr_deducted || entry.shrDeducted || 0)
+    return Math.max(0, Math.round(pd * days + addSal - advD - shrD))
   },
 
   // Legacy fallback (O(N^2), use sparingly)

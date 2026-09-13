@@ -35,10 +35,12 @@ export function Payslip() {
   const entries = weekly.filter(w => w.name === selEmp && (!selWeek || w.week_label === selWeek))
   const pd = emp ? DB.perDay(emp, wd) : 0
   const totalDays = entries.reduce((s, w) => s + Number(w.days_worked || 0) - Number(w.leaves || 0), 0)
+  const totalAdd  = entries.reduce((s, w) => s + Number(w.additional_salary || w.additionalSalary || 0), 0)
   const totalAdv  = entries.reduce((s, w) => s + Number(w.adv_deducted || 0), 0)
   const totalShr  = entries.reduce((s, w) => s + Number(w.shr_deducted || 0), 0)
   const earned    = pd * totalDays
-  const netPay    = earned - totalAdv - totalShr
+  const grossPay  = earned + totalAdd
+  const netPay    = grossPay - totalAdv - totalShr
   const bank      = bankList.find(b => b.name === selEmp) || {}
 
   const shareWhatsApp = () => {
@@ -59,7 +61,8 @@ export function Payslip() {
       `━━━━━━━━━━━━━━━━━━━━`,
       `💵 *EARNINGS*`,
       `Salary Earned: ${fmt(Math.round(earned))}`,
-      `Gross Total: ${fmt(Math.round(earned))}`,
+      ...(totalAdd > 0 ? [`Additional Work: ${fmt(totalAdd)}`] : []),
+      `Gross Total: ${fmt(Math.round(grossPay))}`,
       ``,
       `💸 *DEDUCTIONS*`,
       `Advance Deducted: ${fmt(totalAdv)}`,
@@ -142,9 +145,15 @@ export function Payslip() {
                     <span>Basic Salary</span>
                     <span>{fmt(earned)}</span>
                   </div>
+                  {totalAdd > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, color: 'var(--emerald)' }}>
+                      <span>Additional Work Salary</span>
+                      <span>{fmt(totalAdd)}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
                     <span>Gross Total</span>
-                    <span style={{ color: 'var(--green)' }}>{fmt(earned)}</span>
+                    <span style={{ color: 'var(--green)' }}>{fmt(grossPay)}</span>
                   </div>
                 </div>
                 <div>

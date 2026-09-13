@@ -155,13 +155,73 @@ function WhatsAppBulkModal({ label, entries, emps, bankList, wd, onClose }) {
   )
 }
 
+const WORK_TYPES = ['Packing', 'Sales Man', 'Delivery', 'Driver', 'Overtime', 'Other']
+
 function InlineCell({ value, onSave, min = 0, max, color }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value)
   useEffect(() => { setVal(value) }, [value])
   const commit = () => { setEditing(false); const num = Number(val); if (num !== value) onSave(num) }
-  if (editing) return <input type="number" min={min} max={max} value={val} autoFocus onChange={e => setVal(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') { setVal(value); setEditing(false) } }} style={{ width:60, height:32, textAlign:'center', border:'2px solid var(--blue)', borderRadius:8, fontFamily:'var(--mono)', fontSize:13, fontWeight:700, outline:'none', background:'#fff' }} />
+  if (editing) return <input type="number" min={min} max={max} value={val} autoFocus onChange={e => setVal(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') { setVal(value); setEditing(false) } }} style={{ width:68, height:32, textAlign:'center', border:'2px solid var(--blue)', borderRadius:8, fontFamily:'var(--mono)', fontSize:13, fontWeight:700, outline:'none', background:'#fff' }} />
   return <span onClick={() => setEditing(true)} style={{ cursor:'pointer', fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:color||'var(--navy)', padding:'6px 12px', borderRadius:8, display:'inline-block', border:'1px dashed #cbd5e1', transition:'all .2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor='var(--blue)'; e.currentTarget.style.background='var(--bg)' }} onMouseLeave={e => { e.currentTarget.style.borderColor='#cbd5e1'; e.currentTarget.style.background='transparent' }}>{value}</span>
+}
+
+function InlineSelectCell({ value, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [custom, setCustom] = useState(false)
+  const [val, setVal] = useState(value || '')
+
+  useEffect(() => { setVal(value || '') }, [value])
+
+  const commit = (newVal) => {
+    setEditing(false)
+    setCustom(false)
+    if (newVal !== value) onSave(newVal)
+  }
+
+  if (editing) {
+    if (custom) {
+      return (
+        <input 
+          type="text" 
+          value={val} 
+          autoFocus 
+          placeholder="Custom work..."
+          onChange={e => setVal(e.target.value)} 
+          onBlur={() => commit(val)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(val); if (e.key === 'Escape') { setVal(value || ''); setEditing(false); setCustom(false) } }}
+          style={{ width: 110, height: 32, padding: '0 8px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff' }} 
+        />
+      )
+    }
+    return (
+      <select 
+        value={WORK_TYPES.includes(val) ? val : (val ? 'Other' : '')} 
+        autoFocus 
+        onChange={e => {
+          if (e.target.value === 'Other') {
+            setCustom(true)
+          } else {
+            commit(e.target.value)
+          }
+        }} 
+        onBlur={() => setEditing(false)}
+        style={{ height: 32, padding: '0 6px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff', cursor: 'pointer' }}
+      >
+        <option value="">— Select —</option>
+        {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+    )
+  }
+
+  return (
+    <span 
+      onClick={() => setEditing(true)} 
+      style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: value ? 'var(--blue)' : '#94a3b8', padding: '4px 8px', borderRadius: 6, display: 'inline-block', border: '1px dashed #cbd5e1', transition: 'all .2s' }}
+    >
+      {value || '+ Type'}
+    </span>
+  )
 }
 
 export function Periods() {
@@ -317,7 +377,19 @@ export function Weekly() {
     setAllWeekly(prev => prev.map(w => w.id === entry.id ? { ...w, [field]: newVal } : w))
     setSaving(entry.id)
     try {
-      await DB.updateWeekly({ id: entry.id, name: entry.name, weekLabel: entry.week_label, date: entry.date, periodId: entry.period_id, daysWorked: field === 'days_worked' ? newVal : (entry.days_worked || 0), leaves: field === 'leaves' ? newVal : (entry.leaves || 0), advDeducted: field === 'adv_deducted' ? newVal : (entry.adv_deducted || 0), shrDeducted: field === 'shr_deducted' ? newVal : (entry.shr_deducted || 0) })
+      await DB.updateWeekly({ 
+        id: entry.id, 
+        name: entry.name, 
+        weekLabel: entry.week_label, 
+        date: entry.date, 
+        periodId: entry.period_id, 
+        daysWorked: field === 'days_worked' ? newVal : (entry.days_worked || 0), 
+        leaves: field === 'leaves' ? newVal : (entry.leaves || 0), 
+        advDeducted: field === 'adv_deducted' ? newVal : (entry.adv_deducted || 0), 
+        shrDeducted: field === 'shr_deducted' ? newVal : (entry.shr_deducted || 0),
+        additionalSalary: field === 'additional_salary' ? newVal : (entry.additional_salary || 0),
+        additionalWorkType: field === 'additional_work_type' ? newVal : (entry.additional_work_type || '')
+      })
       toast.success('Saved', { duration: 800 })
     } catch (err) { toast.error('Failed'); load() } finally { setSaving(null) }
   }
@@ -326,13 +398,13 @@ export function Weekly() {
     if (adding.has(emp.name)) return
     setAdding(prev => new Set([...prev, emp.name]))
     try {
-      await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:6, leaves:0, advDeducted:0, shrDeducted:0, periodId:activePeriod.id })
+      await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, daysWorked:6, leaves:0, advDeducted:0, shrDeducted:0, additionalSalary:0, additionalWorkType:'', periodId:activePeriod.id })
       load()
     } catch (err) { toast.error('Error') } finally { setAdding(prev => { const n = new Set(prev); n.delete(emp.name); return n }) }
   }
 
   const bulkAdd = async () => {
-    for (const emp of pendingEmps) await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, periodId:activePeriod.id })
+    for (const emp of pendingEmps) await DB.saveWeekly({ id:uid(), name:emp.name, weekLabel:activePeriod.label, date:activePeriod.date_from, ...bulkForm, additionalSalary:0, additionalWorkType:'', periodId:activePeriod.id })
     setBulkModal(false); load()
   }
 
@@ -419,7 +491,7 @@ export function Weekly() {
         <div className="tbl-wrap">
           <table>
             <thead>
-              <tr><th>Staff Member</th><th style={{ textAlign:'center' }}>Days</th><th style={{ textAlign:'center' }}>Leaves</th><th style={{ textAlign:'center' }}>Advance</th><th style={{ textAlign:'center' }}>Shortage</th><th>Net Salary</th><th style={{ textAlign:'right' }}>Action</th></tr>
+              <tr><th>Staff Member</th><th style={{ textAlign:'center' }}>Days</th><th style={{ textAlign:'center' }}>Leaves</th><th style={{ textAlign:'center' }}>Advance</th><th style={{ textAlign:'center' }}>Shortage</th><th style={{ textAlign:'center' }}>Add. Salary</th><th style={{ textAlign:'center' }}>Work Type</th><th>Net Salary</th><th style={{ textAlign:'right' }}>Action</th></tr>
             </thead>
             <tbody>
               {filtered.map(w => (
@@ -429,6 +501,8 @@ export function Weekly() {
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(w.leaves||0)} max={7} onSave={v => inlineSave(w,'leaves',v)} /></td>
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(w.adv_deducted||0)} onSave={v => inlineSave(w,'adv_deducted',v)} color="var(--rose)" /></td>
                   <td style={{ textAlign:'center' }}><InlineCell value={Number(w.shr_deducted||0)} onSave={v => inlineSave(w,'shr_deducted',v)} color="var(--rose)" /></td>
+                  <td style={{ textAlign:'center' }}><InlineCell value={Number(w.additional_salary||0)} onSave={v => inlineSave(w,'additional_salary',v)} color="var(--emerald)" /></td>
+                  <td style={{ textAlign:'center' }}><InlineSelectCell value={w.additional_work_type||''} onSave={v => inlineSave(w,'additional_work_type',v)} /></td>
                   <td className="amt amt-green" style={{ fontSize: 15 }}>{fmt(DB.weekSalary(w, empMap[w.name], wd))}</td>
                   <td style={{ textAlign:'right' }}><button className="btn btn-sm btn-danger" onClick={() => setConfirm(w.id)}><Trash2 size={14}/></button></td>
                 </tr>
@@ -436,7 +510,7 @@ export function Weekly() {
               {pendingEmps.filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase())).map(e => (
                 <tr key={e.id} style={{ background: '#fffbeb' }}>
                   <td style={{ opacity: 0.5 }}>{e.name}</td>
-                  <td colSpan={5} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>PENDING ENTRY</td>
+                  <td colSpan={7} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>PENDING ENTRY</td>
                   <td style={{ textAlign: 'right' }}><button className="btn btn-sm btn-blue" onClick={() => quickAdd(e)}>+ Quick Add</button></td>
                 </tr>
               ))}
