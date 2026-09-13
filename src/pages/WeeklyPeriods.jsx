@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Calendar, Download, Printer, Send, 
   Trash2, Plus, Zap, CheckCircle, AlertTriangle,
-  History, Lock, Unlock, FileSpreadsheet
+  History, Lock, Unlock, FileSpreadsheet, Search
 } from 'lucide-react'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
