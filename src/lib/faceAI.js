@@ -72,7 +72,71 @@ export function generateFaceDescriptor(imageDataUrl) {
   })
 }
 
-// Validate captured image quality (reject pitch-black, blank, or covered camera snaps)
+// Anti-Spoofing Liveness Check: verifies natural micro-movement between 2 consecutive frames
+export function verifyLiveness(videoElement) {
+  return new Promise((resolve) => {
+    if (!videoElement) {
+      resolve({ live: true })
+      return
+    }
+
+    const snap1 = captureSnapshot(videoElement)
+    setTimeout(() => {
+      const snap2 = captureSnapshot(videoElement)
+      if (!snap1 || !snap2) {
+        resolve({ live: true })
+        return
+      }
+
+      const img1 = new Image()
+      const img2 = new Image()
+      img1.src = snap1
+      img2.src = snap2
+
+      let loadedCount = 0
+      const checkDiff = () => {
+        loadedCount++
+        if (loadedCount < 2) return
+        
+        const canvas1 = document.createElement('canvas')
+        const canvas2 = document.createElement('canvas')
+        canvas1.width = 64
+        canvas1.height = 64
+        canvas2.width = 64
+        canvas2.height = 64
+        const ctx1 = canvas1.getContext('2d')
+        const ctx2 = canvas2.getContext('2d')
+
+        ctx1.drawImage(img1, 0, 0, 64, 64)
+        ctx2.drawImage(img2, 0, 0, 64, 64)
+
+        const d1 = ctx1.getImageData(0, 0, 64, 64).data
+        const d2 = ctx2.getImageData(0, 0, 64, 64).data
+
+        let totalDiff = 0
+        for (let i = 0; i < d1.length; i += 4) {
+          totalDiff += Math.abs(d1[i] - d2[i]) + Math.abs(d1[i+1] - d2[i+1]) + Math.abs(d1[i+2] - d2[i+2])
+        }
+
+        const avgPixelDiff = totalDiff / (64 * 64 * 3)
+
+        // If pixel difference is virtually 0 (freeze/photo upload hack), flag as static image
+        if (avgPixelDiff < 0.15) {
+          resolve({ live: false, reason: 'Static photo or screen detected. Please face the live camera.' })
+        } else {
+          resolve({ live: true, microMovement: avgPixelDiff.toFixed(2) })
+        }
+      }
+
+      img1.onload = checkDiff
+      img2.onload = checkDiff
+      img1.onerror = () => resolve({ live: true })
+      img2.onerror = () => resolve({ live: true })
+    }, 200)
+  })
+}
+
+// Validate captured image quality (reject pitch-black, overexposed, or covered camera snaps)
 export function validateSnapshotImage(imageDataUrl) {
   return new Promise((resolve) => {
     if (!imageDataUrl || imageDataUrl.length < 500) {
@@ -112,10 +176,12 @@ export function validateSnapshotImage(imageDataUrl) {
       }
       const stdDev = Math.sqrt(varianceSum / pixelValues.length)
 
-      // Reject if pitch dark (avg brightness < 15) or zero contrast/blank (stdDev < 5)
+      // Reject if pitch dark (avg brightness < 15), overexposed (> 240), or zero contrast/blank (stdDev < 6)
       if (avgBrightness < 15) {
         resolve({ valid: false, reason: 'Camera snapshot is pitch black. Please turn on lights or uncover camera.' })
-      } else if (stdDev < 5) {
+      } else if (avgBrightness > 240) {
+        resolve({ valid: false, reason: 'Camera snapshot is overexposed / blinded by direct glare. Please adjust angle.' })
+      } else if (stdDev < 6) {
         resolve({ valid: false, reason: 'Snapshot lacks facial features (solid color / covered camera).' })
       } else {
         resolve({ valid: true, avgBrightness: Math.round(avgBrightness), stdDev: Math.round(stdDev) })

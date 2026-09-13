@@ -16,6 +16,7 @@ import {
   generateFaceDescriptor, 
   compareFaceDescriptors, 
   validateSnapshotImage,
+  verifyLiveness,
   getAddressFromCoords, 
   checkGeofence 
 } from '../lib/faceAI'
@@ -248,6 +249,15 @@ export default function EmployeePortal({ defaultTab }) {
     const imgValidation = await validateSnapshotImage(photoBase64)
     if (!imgValidation.valid) {
       toast.error(`🔴 Image Rejected: ${imgValidation.reason}`)
+      setVerifying(false)
+      setFaceStatus('error')
+      return
+    }
+
+    // 2.5 Anti-Spoofing Liveness Check (Verify live video stream vs static photo/screen)
+    const livenessCheck = await verifyLiveness(videoRef.current)
+    if (!livenessCheck.live) {
+      toast.error(`🔴 Liveness Rejected: ${livenessCheck.reason}`)
       setVerifying(false)
       setFaceStatus('error')
       return
