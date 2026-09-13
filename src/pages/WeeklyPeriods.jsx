@@ -162,8 +162,29 @@ function InlineCell({ value, onSave, min = 0, max, color }) {
   const [val, setVal] = useState(value)
   useEffect(() => { setVal(value) }, [value])
   const commit = () => { setEditing(false); const num = Number(val); if (num !== value) onSave(num) }
-  if (editing) return <input type="number" min={min} max={max} value={val} autoFocus onChange={e => setVal(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') { setVal(value); setEditing(false) } }} style={{ width:68, height:32, textAlign:'center', border:'2px solid var(--blue)', borderRadius:8, fontFamily:'var(--mono)', fontSize:13, fontWeight:700, outline:'none', background:'#fff' }} />
-  return <span onClick={() => setEditing(true)} style={{ cursor:'pointer', fontFamily:'var(--mono)', fontSize:14, fontWeight:700, color:color||'var(--navy)', padding:'6px 12px', borderRadius:8, display:'inline-block', border:'1px dashed #cbd5e1', transition:'all .2s' }} onMouseEnter={e => { e.currentTarget.style.borderColor='var(--blue)'; e.currentTarget.style.background='var(--bg)' }} onMouseLeave={e => { e.currentTarget.style.borderColor='#cbd5e1'; e.currentTarget.style.background='transparent' }}>{value}</span>
+  if (editing) return (
+    <input 
+      type="number" 
+      min={min} 
+      max={max} 
+      value={val} 
+      autoFocus 
+      onChange={e => setVal(e.target.value)} 
+      onBlur={commit} 
+      onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') { setVal(value); setEditing(false) } }} 
+      style={{ width: 96, height: 44, textAlign: 'center', border: '2px solid var(--brit-red)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 16, fontWeight: 800, outline: 'none', background: '#ffffff', boxShadow: '0 0 0 4px rgba(227, 30, 36, 0.15)' }} 
+    />
+  )
+  return (
+    <span 
+      onClick={() => setEditing(true)} 
+      style={{ cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 15, fontWeight: 800, color: color || 'var(--navy)', padding: '8px 16px', minWidth: 60, textAlign: 'center', borderRadius: 12, display: 'inline-block', border: '2px dashed var(--brit-red)', background: 'var(--brit-cream-light)', transition: 'all .2s ease' }} 
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brit-red-hover)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.transform = 'scale(1.06)' }} 
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--brit-red)'; e.currentTarget.style.background = 'var(--brit-cream-light)'; e.currentTarget.style.transform = 'scale(1)' }}
+    >
+      {value}
+    </span>
+  )
 }
 
 function InlineSelectCell({ value, onSave }) {
@@ -190,7 +211,7 @@ function InlineSelectCell({ value, onSave }) {
           onChange={e => setVal(e.target.value)} 
           onBlur={() => commit(val)}
           onKeyDown={e => { if (e.key === 'Enter') commit(val); if (e.key === 'Escape') { setVal(value || ''); setEditing(false); setCustom(false) } }}
-          style={{ width: 110, height: 32, padding: '0 8px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff' }} 
+          style={{ width: 140, height: 44, padding: '0 12px', borderRadius: 12, border: '2px solid var(--brit-red)', fontSize: 14, fontWeight: 800, outline: 'none', background: '#fff', boxShadow: '0 0 0 4px rgba(227, 30, 36, 0.15)' }} 
         />
       )
     }
@@ -206,7 +227,7 @@ function InlineSelectCell({ value, onSave }) {
           }
         }} 
         onBlur={() => setEditing(false)}
-        style={{ height: 32, padding: '0 6px', borderRadius: 8, border: '2px solid var(--blue)', fontSize: 12, fontWeight: 700, outline: 'none', background: '#fff', cursor: 'pointer' }}
+        style={{ height: 44, padding: '0 12px', borderRadius: 12, border: '2px solid var(--brit-red)', fontSize: 14, fontWeight: 800, outline: 'none', background: '#fff', cursor: 'pointer', boxShadow: '0 0 0 4px rgba(227, 30, 36, 0.15)' }}
       >
         <option value="">— Select —</option>
         {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -217,7 +238,9 @@ function InlineSelectCell({ value, onSave }) {
   return (
     <span 
       onClick={() => setEditing(true)} 
-      style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: value ? 'var(--blue)' : '#94a3b8', padding: '4px 8px', borderRadius: 6, display: 'inline-block', border: '1px dashed #cbd5e1', transition: 'all .2s' }}
+      style={{ cursor: 'pointer', fontSize: 13, fontWeight: 800, color: value ? 'var(--brit-red)' : '#777', padding: '8px 16px', borderRadius: 12, display: 'inline-block', border: '2px dashed var(--brit-red)', background: 'var(--brit-cream-light)', transition: 'all .2s ease' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brit-red-hover)'; e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.transform = 'scale(1.06)' }} 
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--brit-red)'; e.currentTarget.style.background = 'var(--brit-cream-light)'; e.currentTarget.style.transform = 'scale(1)' }}
     >
       {value || '+ Type'}
     </span>
