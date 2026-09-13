@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
   Download, Database, Key, LogOut, Menu, X,
-  User, Settings, Info, ChevronDown, UserCheck, ShieldCheck
+  User, Settings, Info, ChevronDown, UserCheck, ShieldCheck, Camera
 } from 'lucide-react'
 
 export function Layout({ children, title }) {

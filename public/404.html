@@ -4,8 +4,14 @@
     <meta charset="utf-8">
     <title>Thulir Agency Payroll</title>
     <script>
-      // Redirect 404 to index for HashRouter
-      window.location.replace(window.location.origin + window.location.pathname.split('/').slice(0,2).join('/'));
+      // Redirect 404 to index with hash for HashRouter
+      (function() {
+        var path = window.location.pathname;
+        var parts = path.split('/').filter(Boolean);
+        var base = parts.length > 0 ? '/' + parts[0] + '/' : '/';
+        var route = parts.length > 1 ? '/' + parts.slice(1).join('/') : '';
+        window.location.replace(window.location.origin + base + '#' + (route || '/'));
+      })();
     </script>
   </head>
   <body></body>
