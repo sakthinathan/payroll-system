@@ -522,7 +522,7 @@ export const DB = {
     } catch (e) {
       console.warn('Supabase attendance_logs fallback to localStorage')
     }
-    const local = localStorage.getItem('thulir_attendance_logs')
+    const local = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage.getItem('thulir_attendance_logs') : null
     return local ? JSON.parse(local) : []
   }),
 
@@ -534,11 +534,13 @@ export const DB = {
     } catch (e) {
       console.warn('Supabase attendance upsert fallback to localStorage')
     }
-    const local = JSON.parse(localStorage.getItem('thulir_attendance_logs') || '[]')
-    const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
-    if (idx >= 0) local[idx] = { ...local[idx], ...log }
-    else local.unshift(log)
-    localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const local = JSON.parse(window.localStorage.getItem('thulir_attendance_logs') || '[]')
+      const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
+      if (idx >= 0) local[idx] = { ...local[idx], ...log }
+      else local.unshift(log)
+      window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+    }
     return log
   },
 
@@ -548,9 +550,87 @@ export const DB = {
       const { data, error } = await supabase.from('attendance_logs').update({ status: 'approved' }).in('id', ids)
       if (!error) return data
     } catch (e) {}
-    const local = JSON.parse(localStorage.getItem('thulir_attendance_logs') || '[]')
-    local.forEach(l => { if (ids.includes(l.id)) l.status = 'approved' })
-    localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const local = JSON.parse(window.localStorage.getItem('thulir_attendance_logs') || '[]')
+      local.forEach(l => { if (ids.includes(l.id)) l.status = 'approved' })
+      window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+    }
+  },
+
+  getAttendanceSheet: async (periodId) => {
+    if (!periodId) return null
+    try {
+      const val = await DB.getSetting(`attendance_sheet_${periodId}`)
+      if (val) {
+        return typeof val === 'string' ? JSON.parse(val) : val
+      }
+    } catch (e) {}
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const local = window.localStorage.getItem(`thulir_attendance_sheet_${periodId}`)
+      return local ? JSON.parse(local) : null
+    }
+    return null
+  },
+
+  saveAttendanceSheet: async (periodId, sheetData) => {
+    if (!periodId) return
+    cache.clear()
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`thulir_attendance_sheet_${periodId}`, JSON.stringify(sheetData))
+    }
+    try {
+      await DB.setSetting(`attendance_sheet_${periodId}`, JSON.stringify(sheetData))
+    } catch (e) {
+      console.warn('Failed to save attendance sheet to DB settings')
+    }
+    return sheetData
+  },
+
+  syncAttendanceToWeeklyPayroll: async (periodId, periodLabel, periodDate, staffAttendanceList) => {
+    cache.clear()
+    const existingEntries = await DB.weeklyByPeriod(periodId, periodLabel)
+    const existingMap = {}
+    existingEntries.forEach(e => { existingMap[e.name] = e })
+
+    const results = []
+    for (const item of staffAttendanceList) {
+      const existing = existingMap[item.empName]
+      const daysWorked = Number(item.daysWorked) || 0
+      const leaves = Number(item.leaves) || 0
+      if (existing) {
+        // Map snake_case DB row → camelCase expected by updateWeekly so that
+        // admin-entered advance / shortage / additional salary are preserved.
+        await DB.updateWeekly({
+          id: existing.id,
+          name: existing.name,
+          weekLabel: existing.week_label,
+          date: existing.date,
+          daysWorked,
+          leaves,
+          advDeducted: Number(existing.adv_deducted || 0),
+          shrDeducted: Number(existing.shr_deducted || 0),
+          additionalSalary: Number(existing.additional_salary || 0),
+          additionalWorkType: existing.additional_work_type || ''
+        })
+        results.push({ name: item.empName, daysWorked, leaves, status: 'updated' })
+      } else {
+        await DB.saveWeekly({
+          id: uid(),
+          name: item.empName,
+          weekLabel: periodLabel || item.weekLabel || 'Weekly Payroll',
+          date: periodDate || item.date || new Date().toISOString().slice(0, 10),
+          daysWorked,
+          leaves,
+          advDeducted: 0,
+          shrDeducted: 0,
+          additionalSalary: 0,
+          additionalWorkType: '',
+          periodId: periodId
+        })
+        results.push({ name: item.empName, daysWorked, leaves, status: 'created' })
+      }
+    }
+    return results
   },
 
   // ── High-performance Lookup Helpers ───────────────────────────────

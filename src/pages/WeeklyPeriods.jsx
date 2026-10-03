@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
@@ -524,6 +525,24 @@ export function Weekly() {
           <div style={{ color: 'var(--slate)', fontSize: 14, fontWeight: 600 }}>{allWeekly.length} / {weeklyOnlyEmps.length} Employees Entered</div>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Link 
+            to="/attendance-approval" 
+            className="btn" 
+            style={{ 
+              background: '#FFFFFF', 
+              color: 'var(--navy)', 
+              border: '2px solid var(--border)', 
+              textDecoration: 'none', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              fontWeight: 800,
+              fontSize: 13
+            }}
+          >
+            <Calendar size={16} color="var(--brit-red)" />
+            <span>📋 Attendance Register</span>
+          </Link>
           {pendingEmps.length > 0 && <button className="btn" style={{ background: 'var(--brit-cream-light)', color: 'var(--navy)', border: '2px solid var(--border)' }} onClick={() => setBulkModal(true)}><Zap size={16}/> Bulk Action</button>}
           <button className="btn btn-primary" onClick={() => setCloseConfirm(true)}><Lock size={16}/> Close & Download</button>
         </div>
