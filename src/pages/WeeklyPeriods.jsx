@@ -258,7 +258,16 @@ export function Periods() {
   useEffect(() => { load() }, [load])
   const open = periods.find(p => p.status==='open'), closed = periods.filter(p => p.status==='closed')
   const reopen = async p => { if (open && open.id!==p.id) { toast.error(`"${open.label}" is active. Close it first.`); return }; await DB.reopenPeriod(p.id); toast.success(`"${p.label}" reopened`); load() }
-  const viewPeriod = async p => { const entries = await DB.weeklyByPeriod(p.id); setViewEntries(entries); setViewModal(p) }
+  const viewPeriod = async p => { 
+    try {
+      const entries = await DB.weeklyByPeriod(p.id, p.label)
+      setViewEntries(entries || [])
+      setViewModal(p)
+    } catch (err) {
+      console.error('Error loading weekly period details:', err)
+      toast.error('Failed to load period details')
+    }
+  }
   
   if (loading) return <Layout title="Payroll Archive"><Spinner /></Layout>
 
@@ -302,13 +311,20 @@ export function Periods() {
                   </td>
                 </tr>
               ))}
+              {!closed.length && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: 28, color: 'var(--mid)' }}>
+                    No completed weekly payrolls yet
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </Panel>
 
       {viewModal && (
-        <Modal title={`History: ${viewModal.label}`} onClose={() => setViewModal(null)} onSave={() => setViewModal(null)} saveLabel="Close">
+        <Modal title={`History: ${viewModal.label}`} onClose={() => setViewModal(null)} wide>
           <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--slate)' }}>{viewEntries.length} employees paid</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--emerald)' }}>{fmt(viewModal.total_payroll||0)}</div>
@@ -326,6 +342,13 @@ export function Periods() {
                     <td className="amt amt-green" style={{ textAlign: 'right' }}>{fmt(DB.weekSalary(w, emps.find(e => e.name===w.name), wd))}</td>
                   </tr>
                 ))}
+                {!viewEntries.length && (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', padding: 24, color: 'var(--mid)' }}>
+                      No employee entries found for this period
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

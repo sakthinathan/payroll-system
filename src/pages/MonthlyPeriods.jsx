@@ -15,7 +15,7 @@ export function MonthlyPeriods() {
   const load = useCallback(async () => {
     const [p, e, w] = await Promise.all([DB.monthlyPeriods(), DB.employees(), DB.getWorkingDays()])
     setPeriods(p)
-    setEmps(e.filter(emp => emp.salary_type === 'monthly'))
+    setEmps(e)
     setWd(w)
     setLoading(false)
   }, [])
@@ -32,9 +32,14 @@ export function MonthlyPeriods() {
   }
 
   const viewPeriod = async p => {
-    const entries = await DB.monthlyByPeriod(p.id)
-    setViewEntries(entries)
-    setViewModal(p)
+    try {
+      const entries = await DB.monthlyByPeriod(p.id, p.label)
+      setViewEntries(entries || [])
+      setViewModal(p)
+    } catch (err) {
+      console.error('Error loading monthly period details:', err)
+      toast.error('Failed to load period details')
+    }
   }
 
   if (loading) return <Layout title="📆 Monthly Periods"><Spinner /></Layout>
@@ -99,10 +104,19 @@ export function MonthlyPeriods() {
                     </tr>
                   )
                 })}
-                <tr style={{ background:'var(--navy)', color:'#fff', fontWeight:700 }}>
-                  <td colSpan={4}>TOTAL</td>
-                  <td className="amt" style={{ color:'#86efac', fontFamily:'var(--mono)' }}>{fmt(viewModal.total_payroll||0)}</td>
-                </tr>
+                {!viewEntries.length && (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--mid)' }}>
+                      No employee entries found for this period
+                    </td>
+                  </tr>
+                )}
+                {!!viewEntries.length && (
+                  <tr style={{ background:'var(--navy)', color:'#fff', fontWeight:700 }}>
+                    <td colSpan={4}>TOTAL</td>
+                    <td className="amt" style={{ color:'#86efac', fontFamily:'var(--mono)' }}>{fmt(viewModal.total_payroll||0)}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

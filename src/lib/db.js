@@ -234,6 +234,26 @@ export const DB = {
     return supabase.from('weekly_entries').delete().eq('id', id)
   },
 
+  weeklyByPeriod: async (periodId, label) => {
+    if (periodId) {
+      const { data, error } = await supabase
+        .from('weekly_entries')
+        .select('*')
+        .eq('period_id', periodId)
+        .order('name')
+      if (!error && data && data.length > 0) return data
+    }
+    if (label) {
+      const { data: labelData, error: labelError } = await supabase
+        .from('weekly_entries')
+        .select('*')
+        .eq('week_label', label)
+        .order('name')
+      if (!labelError && labelData && labelData.length > 0) return labelData
+    }
+    return []
+  },
+
   // Monthly entries
   monthlyAll: () => cachedQuery('monthlyAll', async () => {
     const { data, error } = await supabase.from('monthly_entries').select('*').order('created_at', { ascending: false })
@@ -293,6 +313,26 @@ export const DB = {
   deleteMonthly: async id => {
     cache.clear()
     return supabase.from('monthly_entries').delete().eq('id', id)
+  },
+
+  monthlyByPeriod: async (periodId, label) => {
+    if (periodId) {
+      const { data, error } = await supabase
+        .from('monthly_entries')
+        .select('*')
+        .eq('period_id', periodId)
+        .order('name')
+      if (!error && data && data.length > 0) return data
+    }
+    if (label) {
+      const { data: labelData, error: labelError } = await supabase
+        .from('monthly_entries')
+        .select('*')
+        .eq('month_label', label)
+        .order('name')
+      if (!labelError && labelData && labelData.length > 0) return labelData
+    }
+    return []
   },
 
   // Advances

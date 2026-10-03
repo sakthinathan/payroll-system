@@ -31,14 +31,14 @@ export function Spinner() {
   )
 }
 
-export function Modal({ title, children, onClose, onSave, saveLabel = 'Save Changes' }) {
+export function Modal({ title, children, onClose, onSave, saveLabel = 'Save Changes', wide }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="glass-panel" 
-        style={{ width: '100%', maxWidth: 560, padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', border: '2px solid var(--border)' }}
+        style={{ width: '100%', maxWidth: wide ? 860 : 560, padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', border: '2px solid var(--border)' }}
       >
         <div style={{ padding: '24px 32px', background: 'var(--brit-cream-light)', borderBottom: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: 20, fontWeight: 900, color: 'var(--brit-red)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</h3>
@@ -50,8 +50,14 @@ export function Modal({ title, children, onClose, onSave, saveLabel = 'Save Chan
           {children}
         </div>
         <div style={{ padding: '20px 32px', background: 'var(--brit-cream-light)', borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button className="btn" style={{ background: '#fff', border: '2px solid var(--border)', color: 'var(--navy)' }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSave}>{saveLabel}</button>
+          {onSave ? (
+            <>
+              <button className="btn" style={{ background: '#fff', border: '2px solid var(--border)', color: 'var(--navy)' }} onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={onSave}>{saveLabel}</button>
+            </>
+          ) : (
+            <button className="btn btn-primary" onClick={onClose}>Close</button>
+          )}
         </div>
       </motion.div>
     </div>
