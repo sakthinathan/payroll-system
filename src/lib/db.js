@@ -515,31 +515,73 @@ export const DB = {
   },
 
   // ── Attendance Logs API ───────────────────────────────────────────
+  // Storage order: 1) attendance_logs table (if it exists)
+  //                2) cloud `settings` table, key = attlog_<emp_id>_<date>  (shared across devices)
+  //                3) localStorage (offline cache only)
+  _attLogKey: log => `attlog_${log.emp_id || log.empId || log.emp_name || 'x'}_${log.date || log.id}`,
+
+  _localAttLogs: () => {
+    if (typeof window === 'undefined' || !window.localStorage) return []
+    try { return JSON.parse(window.localStorage.getItem('thulir_attendance_logs') || '[]') } catch { return [] }
+  },
+
+  _writeLocalAttLog: log => {
+    if (typeof window === 'undefined' || !window.localStorage) return
+    const local = DB._localAttLogs()
+    const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
+    if (idx >= 0) local[idx] = { ...local[idx], ...log }
+    else local.unshift(log)
+    try { window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local)) } catch { /* quota */ }
+  },
+
+  _saveAttLogCloud: async log => {
+    const { error } = await supabase.from('settings').upsert({ key: DB._attLogKey(log), value: JSON.stringify(log) })
+    if (error) throw error
+  },
+
   attendanceLogs: () => cachedQuery('attendanceLogs', async () => {
+    // 1) Dedicated table, if present
     try {
       const { data, error } = await supabase.from('attendance_logs').select('*').order('created_at', { ascending: false })
       if (!error && data) return data
+    } catch (e) { /* fall through */ }
+
+    // 2) Cloud settings rows
+    const byKey = {}
+    try {
+      const { data, error } = await supabase.from('settings').select('key,value').like('key', 'attlog_%')
+      if (!error && data) {
+        data.forEach(r => { try { byKey[r.key] = JSON.parse(r.value) } catch { /* skip bad row */ } })
+      }
     } catch (e) {
-      console.warn('Supabase attendance_logs fallback to localStorage')
+      console.warn('Cloud attendance logs unavailable, using local cache')
     }
-    const local = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage.getItem('thulir_attendance_logs') : null
-    return local ? JSON.parse(local) : []
+
+    // 3) Merge local logs; upload any that never reached the cloud
+    for (const l of DB._localAttLogs()) {
+      const k = DB._attLogKey(l)
+      const cloud = byKey[k]
+      if (!cloud || (!cloud.check_out_time && l.check_out_time) || (cloud.status !== 'approved' && l.status === 'approved')) {
+        byKey[k] = { ...(cloud || {}), ...l }
+        try { await DB._saveAttLogCloud(byKey[k]) } catch { /* offline – retry next load */ }
+      }
+    }
+
+    return Object.values(byKey).sort((a, b) =>
+      String(b.created_at || b.date || '').localeCompare(String(a.created_at || a.date || '')))
   }),
 
   saveAttendanceLog: async log => {
     cache.clear()
+    DB._writeLocalAttLog(log)
     try {
-      const { data, error } = await supabase.from('attendance_logs').upsert(log)
-      if (!error) return data
+      const { error } = await supabase.from('attendance_logs').upsert(log)
+      if (!error) return log
+    } catch (e) { /* fall through */ }
+    try {
+      await DB._saveAttLogCloud(log)
     } catch (e) {
-      console.warn('Supabase attendance upsert fallback to localStorage')
-    }
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const local = JSON.parse(window.localStorage.getItem('thulir_attendance_logs') || '[]')
-      const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
-      if (idx >= 0) local[idx] = { ...local[idx], ...log }
-      else local.unshift(log)
-      window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+      console.warn('Attendance cloud save failed; kept locally and will retry', e)
     }
     return log
   },
@@ -547,14 +589,16 @@ export const DB = {
   approveAttendanceLogs: async (ids) => {
     cache.clear()
     try {
-      const { data, error } = await supabase.from('attendance_logs').update({ status: 'approved' }).in('id', ids)
-      if (!error) return data
-    } catch (e) {}
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const local = JSON.parse(window.localStorage.getItem('thulir_attendance_logs') || '[]')
-      local.forEach(l => { if (ids.includes(l.id)) l.status = 'approved' })
-      window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local))
+      const { error } = await supabase.from('attendance_logs').update({ status: 'approved' }).in('id', ids)
+      if (!error) return
+    } catch (e) { /* fall through */ }
+    const all = await DB.attendanceLogs()
+    for (const l of all.filter(x => ids.includes(x.id))) {
+      const updated = { ...l, status: 'approved' }
+      DB._writeLocalAttLog(updated)
+      try { await DB._saveAttLogCloud(updated) } catch { /* ignore */ }
     }
+    cache.clear()
   },
 
   getAttendanceSheet: async (periodId) => {
