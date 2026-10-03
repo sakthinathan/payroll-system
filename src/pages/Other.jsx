@@ -259,8 +259,16 @@ export function Bank() {
 
   const filtered = bank.filter(b => !search || b.name.toLowerCase().includes(search.toLowerCase()))
 
-  const openAdd  = () => { setForm({ name: emps[0]?.name || '', bank: 'SBI', acc: '', ifsc: '', branch: 'Erode', phone: '' }); setModal('add') }
-  const openEdit = b => { setForm({ ...b }); setModal('edit') }
+  const openAdd  = () => { 
+    const first = emps[0]
+    setForm({ name: first?.name || '', bank: 'SBI', acc: '', ifsc: '', branch: 'Erode', phone: first?.phone || '' })
+    setModal('add') 
+  }
+  const openEdit = b => { 
+    const emp = emps.find(e => e.name === b.name)
+    setForm({ ...b, phone: emp?.phone || b.phone || '' })
+    setModal('edit') 
+  }
 
   const save = async () => {
     if (!form.acc) { toast.error('Account number required'); return }
@@ -282,23 +290,27 @@ export function Bank() {
         <div className="tbl-wrap">          <table>
             <thead><tr><th>Employee</th><th>Bank</th><th>Account No.</th><th>IFSC</th><th>Branch</th><th>📱 WhatsApp</th><th>Salary</th><th>Actions</th></tr></thead>
             <tbody>
-              {filtered.map(b => (
-                <tr key={b.name}>
-                  <td><strong style={{ fontSize: 12 }}>{b.name}</strong></td>
-                  <td><span className="badge badge-blue">{b.bank || '—'}</span></td>
-                  <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{b.acc || '—'}</td>
-                  <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{b.ifsc || '—'}</td>
-                  <td>{b.branch || '—'}</td>
-                  <td>{b.phone ? <a href={`https://wa.me/91${b.phone}`} target="_blank" rel="noreferrer" style={{ color: '#25D366', fontWeight: 600, fontSize: 12 }}>📱 {b.phone}</a> : <span style={{ color: 'var(--mid)', fontSize: 12 }}>—</span>}</td>
-                  <td className="amt amt-green">{fmt(emps.find(e => e.name === b.name)?.salary || 0)}</td>
-                  <td>
-                    <div className="flex-gap">
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)}>✏️ Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => setConfirm(b.name)}>🗑️</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(b => {
+                const emp = emps.find(e => e.name === b.name)
+                const phone = emp?.phone || b.phone
+                return (
+                  <tr key={b.name}>
+                    <td><strong style={{ fontSize: 12 }}>{b.name}</strong></td>
+                    <td><span className="badge badge-blue">{b.bank || '—'}</span></td>
+                    <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{b.acc || '—'}</td>
+                    <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{b.ifsc || '—'}</td>
+                    <td>{b.branch || '—'}</td>
+                    <td>{phone ? <a href={`https://wa.me/91${phone}`} target="_blank" rel="noreferrer" style={{ color: '#25D366', fontWeight: 600, fontSize: 12 }}>📱 {phone}</a> : <span style={{ color: 'var(--mid)', fontSize: 12 }}>—</span>}</td>
+                    <td className="amt amt-green">{fmt(emp?.salary || 0)}</td>
+                    <td>
+                      <div className="flex-gap">
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(b)}>✏️ Edit</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => setConfirm(b.name)}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {!filtered.length && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 28, color: 'var(--mid)' }}>No bank records</td></tr>}
             </tbody>
           </table>
@@ -309,7 +321,15 @@ export function Bank() {
         <Modal title={modal === 'add' ? 'Add Bank Account' : 'Edit Bank Account'} onClose={() => setModal(null)} onSave={save}>
           <div className="form-grid cols2">
             <Field label="Employee" style={{ gridColumn: '1/-1' }}>
-              <select className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}>
+              <select 
+                className="form-input" 
+                value={form.name} 
+                onChange={e => {
+                  const selName = e.target.value
+                  const foundEmp = emps.find(x => x.name === selName)
+                  setForm(f => ({ ...f, name: selName, phone: foundEmp?.phone || f.phone }))
+                }}
+              >
                 {emps.map(e => <option key={e.id}>{e.name}</option>)}
               </select>
             </Field>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { DB, fmt, uid } from '../lib/db'
 import { Layout } from '../components/Layout'
 import { Modal, Confirm, Panel, Spinner, Field } from '../components/UI'
 import { BRAND } from '../config/branding'
 import { motion } from 'framer-motion'
-import { UserPlus, Calendar, Info, Search, Contact, CreditCard } from 'lucide-react'
+import { UserPlus, Calendar, Info, Search, Contact, CreditCard, Settings, ArrowRight } from 'lucide-react'
 
 export default function Employees() {
   const [emps, setEmps] = useState([])
@@ -37,7 +38,8 @@ export default function Employees() {
   const openAdd = async () => {
     const nextId = await DB.getNextEmpId(BRAND.shortName)
     setForm({ 
-      name: '', salary: '', salaryType: activeTab, 
+      name: '', salary: '', 
+      salaryType: activeTab === 'monthly' ? 'monthly' : 'weekly', 
       empId: nextId, identityNo: '', 
       joiningDate: new Date().toISOString().split('T')[0], 
       relievingDate: '', phone: '', address: '' 
@@ -62,27 +64,31 @@ export default function Employees() {
   const save = async () => {
     const name = form.name.trim().toUpperCase()
     const salary = Number(form.salary)
-    if (!name || !salary) { toast.error('Name and salary required'); return }
+    if (!name) { toast.error('Employee full name is required'); return }
+    if (!salary || isNaN(salary) || salary <= 0) { toast.error('Please enter a valid salary amount'); return }
     
+    const salaryType = form.salaryType === 'monthly' ? 'monthly' : 'weekly'
     const payload = { 
       ...form, 
       id: modal.type === 'add' ? uid() : modal.emp.id,
       name,
-      salary
+      salary,
+      salaryType
     }
 
     try {
       if (modal.type === 'add') {
         await DB.saveEmployee(payload)
-        toast.success('Employee added ✅')
+        toast.success(`${name} added to ${salaryType === 'monthly' ? 'Monthly' : 'Weekly'} Staff Directory ✅`)
       } else {
         await DB.updateEmployee(payload)
-        toast.success('Saved ✅')
+        toast.success(`${name} record updated ✅`)
       }
+      setActiveTab(salaryType)
       setModal(null)
       load()
     } catch (err) {
-      console.error(err)
+      console.error('Error saving employee:', err)
       toast.error(err.message || 'Error saving employee')
     }
   }
@@ -98,32 +104,58 @@ export default function Employees() {
 
   return (
     <Layout title="Staff Directory">
-      {/* Modern Working Days Control */}
-      <Panel title="Payroll Configuration" subtitle="Global working days setting for rate calculation">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ background: 'var(--brit-red-light)', color: 'var(--brit-red)', width: 64, height: 64, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(227,30,36,0.15)' }}>
-              <Calendar size={32} />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 1 }}>Current Period</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--navy)', letterSpacing: -1 }}>{wd} Working Days</div>
-            </div>
+      {/* Quick Working Days Rate Base Card */}
+      <div style={{ 
+        background: '#FFFFFF', 
+        border: '2px solid var(--border)', 
+        borderRadius: 20, 
+        padding: '16px 24px', 
+        marginBottom: 24, 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexWrap: 'wrap', 
+        gap: 16,
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ background: 'var(--brit-red-light)', color: 'var(--brit-red)', width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(227,30,36,0.15)' }}>
+            <Calendar size={24} />
           </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--brit-cream-light)', padding: '12px 20px', borderRadius: 9999, border: '2px solid var(--border)' }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--navy)' }}>Change to:</span>
-            <input type="number" min={1} max={31} value={wdInput}
-              onChange={e => setWdInput(Number(e.target.value))}
-              style={{ width: 80, height: 42, textAlign: 'center', borderRadius: 9999, border: '2px solid var(--border)', background: '#fff', fontSize: 15, fontWeight: 800, color: 'var(--navy)', outline: 'none' }} />
-            <button className="btn btn-primary" style={{ height: 42, padding: '0 24px' }} onClick={async () => {
-              await DB.setWorkingDays(wdInput)
-              setWd(wdInput)
-              toast.success(`Working days updated to ${wdInput}`)
-            }}>Update</button>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 1 }}>Payroll Rate Base</span>
+              <span style={{ fontSize: 11, background: 'var(--brit-green-light)', color: '#275207', fontWeight: 800, padding: '2px 8px', borderRadius: 9999 }}>Active</span>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)', letterSpacing: -0.5, marginTop: 2 }}>
+              {wd} Working Days
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--slate)', marginLeft: 8 }}>(Daily Rate = Salary ÷ {wd})</span>
+            </div>
           </div>
         </div>
-      </Panel>
+
+        <Link 
+          to="/working-days" 
+          className="btn" 
+          style={{ 
+            background: 'var(--brit-cream-light)', 
+            border: '2px solid var(--border)', 
+            color: 'var(--navy)', 
+            fontWeight: 800, 
+            fontSize: 13,
+            padding: '10px 20px', 
+            borderRadius: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            textDecoration: 'none'
+          }}
+        >
+          <Settings size={15} color="var(--brit-red)" />
+          <span>Working Days Config</span>
+          <ArrowRight size={15} />
+        </Link>
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: 24, gap: 32 }}>
@@ -229,19 +261,64 @@ export default function Employees() {
                   <input value={form.empId} readOnly className="form-input" style={{ background: 'var(--bg)', opacity: 0.7 }} />
                 </Field>
                 <Field label="Salary Classification">
-                  <select value={form.salaryType} onChange={e => setForm(f => ({ ...f, salaryType: e.target.value }))} className="form-input">
-                    <option value="weekly">Weekly Payment</option>
-                    <option value="monthly">Monthly Payment</option>
-                  </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--brit-cream-light)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, salaryType: 'weekly' }))}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: 'none',
+                        background: form.salaryType === 'weekly' ? 'var(--brit-red)' : 'transparent',
+                        color: form.salaryType === 'weekly' ? '#FFFFFF' : 'var(--navy)',
+                        fontWeight: 800,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span>📅 Weekly Staff</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, salaryType: 'monthly' }))}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: 'none',
+                        background: form.salaryType === 'monthly' ? 'var(--brit-red)' : 'transparent',
+                        color: form.salaryType === 'monthly' ? '#FFFFFF' : 'var(--navy)',
+                        fontWeight: 800,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span>🗓️ Monthly Staff</span>
+                    </button>
+                  </div>
                 </Field>
               </div>
               <div className="form-grid cols2" style={{ marginTop: 20 }}>
                 <Field label="Full Name">
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="CAPS" className="form-input" />
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. KARTHIK RAJAN" className="form-input" />
                 </Field>
-                <Field label="Monthly Base Salary (₹)">
-                  <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} className="form-input" />
+                <Field label={form.salaryType === 'monthly' ? 'Monthly Gross Salary (₹)' : 'Contract / Base Salary (₹)'}>
+                  <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="e.g. 18500" className="form-input" />
                 </Field>
+              </div>
+              <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--brit-cream-light)', border: '1px solid var(--border)', fontSize: 12, fontWeight: 700, color: 'var(--slate)' }}>
+                {form.salaryType === 'monthly' 
+                  ? '🗓️ Classified as Monthly Staff: Automatically included in Monthly Payroll processing and payslips.' 
+                  : '📅 Classified as Weekly Staff: Automatically included in Weekly Payroll batch entries and Saturday payouts.'}
               </div>
             </div>
 

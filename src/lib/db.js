@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // ── Supabase Setup ────────────────────────────────────────────────
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const SUPA_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://xzoawoypsldhoucmcuqk.supabase.co'
+const SUPA_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6b2F3b3lwc2xkaG91Y21jdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDI0ODEsImV4cCI6MjA4OTA3ODQ4MX0._Z8ZF8aHLr4HwQzVToe3w_sSDht4oTOHlOK86Oarhok'
 
 if (!SUPA_URL || !SUPA_KEY) {
   console.error('Supabase credentials missing in .env')
@@ -83,63 +83,89 @@ export const DB = {
 
   saveEmployee: async emp => {
     cache.clear()
-    const { data, error } = await supabase.from('employees').insert({
+    const payload = {
       id: emp.id,
-      emp_id: emp.empId || null,
-      name: emp.name,
-      salary: emp.salary,
-      salary_type: emp.salaryType || 'weekly',
-      identity_no: emp.identityNo || null,
-      joining_date: emp.joiningDate || null,
-      relieving_date: emp.relievingDate || null,
+      emp_id: emp.empId || emp.emp_id || null,
+      name: String(emp.name || '').trim().toUpperCase(),
+      salary: Number(emp.salary) || 0,
+      salary_type: (emp.salaryType === 'monthly' || emp.salary_type === 'monthly') ? 'monthly' : 'weekly',
+      identity_no: emp.identityNo || emp.identity_no || null,
+      joining_date: emp.joiningDate || emp.joining_date || null,
+      relieving_date: emp.relievingDate || emp.relieving_date || null,
       phone: emp.phone || null,
-      address: emp.address || null,
-      pin_code: emp.pinCode || '1234',
-      profile_photo: emp.profilePhoto || null,
-      face_descriptor: emp.faceDescriptor || null
-    })
-    if (error) throw error
+      address: emp.address || null
+    }
+
+    if (emp.profilePhoto || emp.profile_photo) {
+      payload.profile_photo = emp.profilePhoto || emp.profile_photo
+    }
+    if (emp.faceDescriptor || emp.face_descriptor) {
+      payload.face_descriptor = emp.faceDescriptor || emp.face_descriptor
+    }
+
+    const { data, error } = await supabase.from('employees').insert(payload)
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('column')) {
+        console.warn('Retrying employee insert without photo/descriptor:', error.message)
+        delete payload.profile_photo
+        delete payload.face_descriptor
+        const { data: retryData, error: retryError } = await supabase.from('employees').insert(payload)
+        if (retryError) throw retryError
+        return retryData
+      }
+      throw error
+    }
     return data
   },
 
   updateEmployee: async emp => {
     cache.clear()
     const payload = {
-      name: emp.name,
-      salary: emp.salary,
-      salary_type: emp.salaryType || emp.salary_type || 'weekly',
+      name: String(emp.name || '').trim().toUpperCase(),
+      salary: Number(emp.salary) || 0,
+      salary_type: (emp.salaryType === 'monthly' || emp.salary_type === 'monthly') ? 'monthly' : 'weekly',
       emp_id: emp.empId || emp.emp_id || null,
       identity_no: emp.identityNo || emp.identity_no || null,
       joining_date: emp.joiningDate || emp.joining_date || null,
       relieving_date: emp.relievingDate || emp.relieving_date || null,
       phone: emp.phone || null,
-      address: emp.address || null,
-      pin_code: emp.pinCode || emp.pin_code || '1234',
-      profile_photo: emp.profilePhoto || emp.profile_photo || null,
-      face_descriptor: emp.faceDescriptor || emp.face_descriptor || null
+      address: emp.address || null
+    }
+
+    if (emp.profilePhoto || emp.profile_photo) {
+      payload.profile_photo = emp.profilePhoto || emp.profile_photo
+    }
+    if (emp.faceDescriptor || emp.face_descriptor) {
+      payload.face_descriptor = emp.faceDescriptor || emp.face_descriptor
     }
 
     const { data, error } = await supabase.from('employees').update(payload).eq('id', emp.id)
     if (error) {
-      if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('profile_photo') || error.message?.includes('face_descriptor')) {
-        console.warn('Supabase employees schema missing photo columns, updating basic profile fields:', error.message)
+      if (error.code === 'PGRST204' || error.message?.includes('column')) {
+        console.warn('Retrying employee update without photo/descriptor:', error.message)
         delete payload.profile_photo
         delete payload.face_descriptor
         const { data: retryData, error: retryError } = await supabase.from('employees').update(payload).eq('id', emp.id)
-        if (retryError) console.error('Retry error updating employee:', retryError)
+        if (retryError) throw retryError
         return retryData
       }
-      console.warn('Supabase employee update issue:', error)
+      throw error
     }
     return data
   },
 
   getNextEmpId: async (prefix = 'THULIR') => {
-    const { data } = await supabase.from('employees').select('emp_id').order('emp_id', { ascending: false }).limit(1)
-    const lastId = data?.[0]?.emp_id
-    if (!lastId) return `${prefix}_01`
-    const num = parseInt(lastId.split('_')[1]) || 0
-    return `${prefix}_${String(num + 1).padStart(2, '0')}`
+    const { data } = await supabase.from('employees').select('emp_id')
+    if (!data?.length) return `${prefix}_01`
+    let maxNum = 0
+    data.forEach(e => {
+      if (e.emp_id) {
+        const parts = e.emp_id.split('_')
+        const n = parseInt(parts[1] || parts[0], 10)
+        if (!isNaN(n) && n > maxNum) maxNum = n
+      }
+    })
+    return `${prefix}_${String(maxNum + 1).padStart(2, '0')}`
   },
 
   deleteEmployee: async id => {
@@ -316,7 +342,20 @@ export const DB = {
 
   upsertBank: async b => {
     cache.clear()
-    return supabase.from('bank_accounts').upsert(b)
+    const { name, bank, acc, ifsc, branch, phone } = b
+    const bankPayload = {
+      name: String(name || '').trim().toUpperCase(),
+      bank: bank || null,
+      acc: acc || null,
+      ifsc: ifsc ? String(ifsc).trim().toUpperCase() : null,
+      branch: branch || null
+    }
+    const { data, error } = await supabase.from('bank_accounts').upsert(bankPayload)
+    if (error) throw error
+    if (phone && name) {
+      await supabase.from('employees').update({ phone: String(phone).trim() }).eq('name', bankPayload.name)
+    }
+    return data
   },
 
   deleteBank: async name => {
@@ -344,6 +383,24 @@ export const DB = {
   setWorkingDays: async n => {
     cache.clear()
     return DB.setSetting('working_days', n)
+  },
+
+  getWorkingDaysConfig: () => cachedQuery('working_days_config', async () => {
+    const v = await DB.getSetting('working_days_config')
+    if (!v) return null
+    try {
+      return typeof v === 'string' ? JSON.parse(v) : v
+    } catch {
+      return null
+    }
+  }),
+
+  setWorkingDaysConfig: async config => {
+    cache.clear()
+    if (config?.workingDays) {
+      await DB.setSetting('working_days', config.workingDays)
+    }
+    return DB.setSetting('working_days_config', JSON.stringify(config))
   },
 
   // Periods

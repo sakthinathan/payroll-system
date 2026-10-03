@@ -23,6 +23,7 @@ const Periods = lazy(() => import('./pages/WeeklyPeriods').then(m => ({ default:
 const Monthly = lazy(() => import('./pages/MonthlyEntry').then(m => ({ default: m.Monthly })))
 const MonthlyPeriods = lazy(() => import('./pages/MonthlyPeriods').then(m => ({ default: m.MonthlyPeriods })))
 const Payslip = lazy(() => import('./pages/PayslipBackup').then(m => ({ default: m.Payslip })))
+const WorkingDaysConfig = lazy(() => import('./pages/WorkingDaysConfig'))
 
 function RouteLoader() {
   return (
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="/weekly" element={<AdminOnly><Weekly /></AdminOnly>} />
         <Route path="/periods" element={<AdminOnly><Periods /></AdminOnly>} />
         <Route path="/monthly" element={<AdminOnly><Monthly /></AdminOnly>} />
+        <Route path="/working-days" element={<AdminOnly><WorkingDaysConfig /></AdminOnly>} />
         <Route path="/ledger" element={<AdminOnly><Ledger /></AdminOnly>} />
         <Route path="/monthly-periods" element={<AdminOnly><MonthlyPeriods /></AdminOnly>} />
         <Route path="/advances" element={<AdminOnly><Advances /></AdminOnly>} />

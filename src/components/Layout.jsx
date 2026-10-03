@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, CalendarDays, History, 
   Wallet, AlertTriangle, Landmark, FileText, 
   Download, Database, Key, LogOut, Menu, X,
-  User, Settings, Info, ChevronDown, UserCheck, ShieldCheck, Camera
+  User, Settings, Info, ChevronDown, UserCheck, ShieldCheck, Camera, Calendar
 } from 'lucide-react'
 
 export function Layout({ children, title }) {
@@ -47,6 +47,7 @@ export function Layout({ children, title }) {
     { section: 'Payroll Entry', items: [
       { path: '/weekly', label: 'Weekly Entry', icon: <CalendarDays size={18} /> },
       { path: '/monthly', label: 'Monthly Entry', icon: <CalendarDays size={18} /> },
+      { path: '/working-days', label: 'Working Days Config', icon: <Calendar size={18} /> },
     ]},
     { section: 'Deductions', items: [
       { path: '/advances', label: 'Advance Log', icon: <Wallet size={18} /> },
