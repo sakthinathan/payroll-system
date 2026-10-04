@@ -108,59 +108,87 @@ export default function EmployeePortal({ defaultTab }) {
 
     // 2. Load Payslips (Weekly & Monthly)
     try {
-      const [weeklyData, monthlyData] = await Promise.all([
+      const [weeklyData, monthlyData, workingDays] = await Promise.all([
         DB.weekly(),
-        DB.monthlyAll()
+        DB.monthlyAll(),
+        DB.getWorkingDays()
       ])
 
-      const empNameLower = currentEmployee?.name?.trim().toLowerCase()
+      const wd = workingDays || 27
+
+      const matchesEmp = (entryName) => {
+        if (!entryName) return false
+        const n = entryName.trim().toLowerCase()
+        const empName = currentEmployee?.name?.trim().toLowerCase()
+        const empId = (currentEmployee?.emp_id || currentEmployee?.empId)?.trim().toLowerCase()
+        return (empName && n === empName) || (empId && n === empId)
+      }
 
       const empWeekly = (weeklyData || [])
-        .filter(w => w.name?.trim().toLowerCase() === empNameLower)
+        .filter(w => matchesEmp(w.name))
         .map(w => {
-          const dailyRate = Number(currentEmployee?.salary || 0)
-          const gross = (Number(w.days_worked || 0) * dailyRate) + Number(w.additional_salary || 0)
-          const totalDeductions = Number(w.adv_deducted || 0) + Number(w.shr_deducted || 0)
+          const monthlySal = Number(currentEmployee?.salary || 0)
+          const dailyRate = monthlySal / wd
+          const daysWorked = Number(w.days_worked || 0)
+          const leaves = Number(w.leaves || 0)
+          const netDays = Math.max(0, daysWorked - leaves)
+          const earnedSalary = netDays * dailyRate
+          const addSalary = Number(w.additional_salary || 0)
+          const gross = earnedSalary + addSalary
+          const advDed = Number(w.adv_deducted || 0)
+          const shrDed = Number(w.shr_deducted || 0)
+          const totalDeductions = advDed + shrDed
           const net = gross - totalDeductions
           return {
             id: w.id,
             type: 'Weekly',
             periodLabel: w.week_label || 'Weekly Pay Period',
             date: w.date || w.created_at,
-            daysWorked: Number(w.days_worked || 0),
-            leaves: Number(w.leaves || 0),
+            daysWorked,
+            leaves,
+            netDays,
             dailyRate,
+            earnedSalary,
             grossPay: gross,
-            additionalSalary: Number(w.additional_salary || 0),
+            additionalSalary: addSalary,
             additionalWorkType: w.additional_work_type || '',
-            advDeducted: Number(w.adv_deducted || 0),
-            shrDeducted: Number(w.shr_deducted || 0),
+            advDeducted: advDed,
+            shrDeducted: shrDed,
             totalDeductions,
             netPay: net
           }
         })
 
       const empMonthly = (monthlyData || [])
-        .filter(m => m.name?.trim().toLowerCase() === empNameLower)
+        .filter(m => matchesEmp(m.name))
         .map(m => {
-          const monthlySalary = Number(currentEmployee?.salary || 0)
-          const dailyRate = monthlySalary / 26
-          const gross = (Number(m.days_worked || 0) * dailyRate) + Number(m.additional_salary || 0)
-          const totalDeductions = Number(m.adv_deducted || 0) + Number(m.shr_deducted || 0)
+          const monthlySal = Number(currentEmployee?.salary || 0)
+          const dailyRate = monthlySal / wd
+          const daysWorked = Number(m.days_worked || 0)
+          const leaves = Number(m.leaves || 0)
+          const netDays = Math.max(0, daysWorked - leaves)
+          const earnedSalary = netDays * dailyRate
+          const addSalary = Number(m.additional_salary || 0)
+          const gross = earnedSalary + addSalary
+          const advDed = Number(m.adv_deducted || 0)
+          const shrDed = Number(m.shr_deducted || 0)
+          const totalDeductions = advDed + shrDed
           const net = gross - totalDeductions
           return {
             id: m.id,
             type: 'Monthly',
             periodLabel: m.month_label || 'Monthly Pay Period',
             date: m.date || m.created_at,
-            daysWorked: Number(m.days_worked || 0),
-            leaves: Number(m.leaves || 0),
+            daysWorked,
+            leaves,
+            netDays,
             dailyRate,
+            earnedSalary,
             grossPay: gross,
-            additionalSalary: Number(m.additional_salary || 0),
+            additionalSalary: addSalary,
             additionalWorkType: m.additional_work_type || '',
-            advDeducted: Number(m.adv_deducted || 0),
-            shrDeducted: Number(m.shr_deducted || 0),
+            advDeducted: advDed,
+            shrDeducted: shrDed,
             totalDeductions,
             netPay: net
           }
@@ -964,15 +992,15 @@ export default function EmployeePortal({ defaultTab }) {
                       </td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '10px 14px', color: 'var(--slate)', fontWeight: 700 }}>Total Days Worked</td>
+                      <td style={{ padding: '10px 14px', color: 'var(--slate)', fontWeight: 700 }}>Days Worked & Leaves</td>
                       <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: 'var(--navy)' }}>
-                        {selectedPayslip.daysWorked} Days
+                        {selectedPayslip.daysWorked} Days {selectedPayslip.leaves > 0 ? `(${selectedPayslip.leaves} Leaves)` : ''} → {selectedPayslip.netDays ?? selectedPayslip.daysWorked} Net Days
                       </td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 14px', color: 'var(--slate)', fontWeight: 700 }}>Earned Basic Salary</td>
                       <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: 'var(--navy)', fontFamily: 'var(--mono)' }}>
-                        {fmt(selectedPayslip.daysWorked * selectedPayslip.dailyRate)}
+                        {fmt(selectedPayslip.earnedSalary ?? (selectedPayslip.daysWorked * selectedPayslip.dailyRate))}
                       </td>
                     </tr>
                     {selectedPayslip.additionalSalary > 0 && (
