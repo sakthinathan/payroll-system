@@ -55,7 +55,7 @@ function AdminOnly({ children }) {
   return children
 }
 
-function LoginRoute() {
+function LoginRoute({ initialTab }) {
   const { user, role } = useAuth()
   const location = useLocation()
   
@@ -70,7 +70,7 @@ function LoginRoute() {
       return <Navigate to={target} replace />
     }
   }
-  return <Login />
+  return <Login initialTab={initialTab} />
 }
 
 function AppRoutes() {
@@ -84,6 +84,8 @@ function AppRoutes() {
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
+        <Route path="/emp-login" element={<LoginRoute initialTab="employee" />} />
+        <Route path="/staff-login" element={<LoginRoute initialTab="employee" />} />
         <Route path="/" element={<AdminOnly><Dashboard /></AdminOnly>} />
         <Route path="/my-attendance" element={<Protected><EmployeePortal defaultTab="attendance" /></Protected>} />
         <Route path="/my-payslips" element={<Protected><EmployeePortal defaultTab="payslips" /></Protected>} />

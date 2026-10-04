@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { BRAND } from '../config/branding'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Landmark, UserCheck, KeyRound } from 'lucide-react'
 
-export default function Login() {
-  const [tab, setTab] = useState('admin') // 'admin' | 'employee'
+export default function Login({ initialTab }) {
+  const location = useLocation()
+  const isEmpPath = location.pathname.includes('emp') || location.pathname.includes('staff')
+  const [tab, setTab] = useState(initialTab || (isEmpPath ? 'employee' : 'admin'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   
@@ -19,7 +21,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { login, loginAsEmployee } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
 
   const targetFrom = location.state?.from?.pathname
   const validAdminFrom = targetFrom && !targetFrom.startsWith('/my-') ? targetFrom : '/'
