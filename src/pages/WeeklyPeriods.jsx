@@ -11,6 +11,8 @@ import {
   History, Lock, Unlock, FileSpreadsheet, Search
 } from 'lucide-react'
 
+import { getCalendarWeeksForMonth, getYearsRange } from '../lib/payrollCalendar'
+
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 const REMITTER_ACC   = '33284893641'
@@ -381,15 +383,24 @@ export function Weekly() {
   const [closedData, setClosedData]     = useState(null)
 
   const now = new Date()
-  const [newPeriod, setNewPeriod] = useState({ month:now.getMonth(), year:now.getFullYear(), weekNum:1, label:'', dateFrom:'', dateTo:'' })
+  const [newPeriod, setNewPeriod] = useState({ month: now.getMonth(), year: now.getFullYear(), weekNum: 1, label: '', dateFrom: '', dateTo: '' })
+
+  const monthWeeks = useMemo(() => {
+    return getCalendarWeeksForMonth(newPeriod.year, newPeriod.month)
+  }, [newPeriod.year, newPeriod.month])
 
   useEffect(() => {
     const { month, year, weekNum } = newPeriod
-    const ranges = [[1,7],[8,14],[15,21],[22,28],[29,null]]
-    const [dayFrom, dayTo] = ranges[weekNum-1]
-    const lastDay = new Date(year, month+1, 0).getDate()
-    const pad = n => String(n).padStart(2,'0')
-    setNewPeriod(p => ({ ...p, dateFrom:`${year}-${pad(month+1)}-${pad(dayFrom)}`, dateTo:`${year}-${pad(month+1)}-${pad(dayTo||lastDay)}`, label:`${MONTHS[month]} Week ${weekNum}` }))
+    const weeks = getCalendarWeeksForMonth(year, month)
+    const selectedWeek = weeks.find(w => w.weekNum === weekNum) || weeks[0]
+    if (selectedWeek) {
+      setNewPeriod(p => ({
+        ...p,
+        dateFrom: selectedWeek.dateFrom,
+        dateTo: selectedWeek.dateTo,
+        label: `${MONTHS[month]} ${selectedWeek.label}`
+      }))
+    }
   }, [newPeriod.month, newPeriod.year, newPeriod.weekNum])
 
   const load = useCallback(async () => {
@@ -488,24 +499,39 @@ export function Weekly() {
           )}
         </AnimatePresence>
 
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
-          <Panel title="Initialize New Period" subtitle="Begin weekly payroll processing">
-            <div className="form-grid cols2" style={{ marginBottom: 24 }}>
-              <Field label="Month"><select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month:Number(e.target.value) }))}>{MONTHS.map((m,i) => <option key={m} value={i}>{m}</option>)}</select></Field>
-              <Field label="Week Number">
-                <select className="form-input" value={newPeriod.weekNum} onChange={e => setNewPeriod(p => ({ ...p, weekNum:Number(e.target.value) }))}>
-                  <option value={1}>Week 1</option><option value={2}>Week 2</option><option value={3}>Week 3</option><option value={4}>Week 4</option><option value={5}>Week 5</option>
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <Panel title="Initialize New Period" subtitle="Begin weekly payroll processing according to Mon-Sat calendar">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 16, marginBottom: 24 }}>
+              <Field label="Year">
+                <select className="form-input" value={newPeriod.year} onChange={e => setNewPeriod(p => ({ ...p, year: Number(e.target.value) }))}>
+                  {getYearsRange(now.getFullYear(), 2, 5).map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </Field>
+              <Field label="Month">
+                <select className="form-input" value={newPeriod.month} onChange={e => setNewPeriod(p => ({ ...p, month: Number(e.target.value), weekNum: 1 }))}>
+                  {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                </select>
+              </Field>
+              <Field label="Week Segment">
+                <select className="form-input" value={newPeriod.weekNum} onChange={e => setNewPeriod(p => ({ ...p, weekNum: Number(e.target.value) }))}>
+                  {monthWeeks.map(w => (
+                    <option key={w.weekNum} value={w.weekNum}>
+                      {w.label} ({new Date(w.dateFrom).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} - {new Date(w.dateTo).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })})
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>
             <div style={{ background: 'var(--bg)', padding: '24px', borderRadius: 20, border: '1px solid var(--border)', marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)', opacity: 0.5, textTransform: 'uppercase', marginBottom: 12 }}>Auto-Generated Details</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)', opacity: 0.5, textTransform: 'uppercase', marginBottom: 12 }}>Auto-Calculated Period Range</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: 18, color: 'var(--navy)' }}>{newPeriod.label}</strong>
-                <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--slate)' }}>{new Date(newPeriod.dateFrom).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} — {new Date(newPeriod.dateTo).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</div>
+                <strong style={{ fontSize: 18, color: 'var(--navy)' }}>{newPeriod.label} ({newPeriod.year})</strong>
+                <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 800, color: 'var(--brit-red)' }}>
+                  {newPeriod.dateFrom ? new Date(newPeriod.dateFrom).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''} — {newPeriod.dateTo ? new Date(newPeriod.dateTo).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                </div>
               </div>
             </div>
-            <button className="btn btn-blue" style={{ width: '100%', padding: '16px', justifyContent: 'center' }} onClick={() => DB.savePeriod({ id:uid(), label:newPeriod.label, month_name:`${MONTHS[newPeriod.month]} ${newPeriod.year}`, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' }).then(load)}>
+            <button className="btn btn-blue" style={{ width: '100%', padding: '16px', justifyContent: 'center' }} onClick={() => DB.savePeriod({ id:uid(), label:`${newPeriod.label}`, month_name:`${MONTHS[newPeriod.month]} ${newPeriod.year}`, date_from:newPeriod.dateFrom, date_to:newPeriod.dateTo, status:'open' }).then(load)}>
               Start Active Payroll Week
             </button>
           </Panel>
