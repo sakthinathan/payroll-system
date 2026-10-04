@@ -186,6 +186,9 @@ export function Shortages() {
 // ── Deduction Master ─────────────────────────────────────────────
 export function Deductions() {
   const [data, setData] = useState(null)
+  const [showAll, setShowAll] = useState(false)
+  const [search, setSearch] = useState('')
+
   useEffect(() => {
     Promise.all([DB.employees(), DB.advances(), DB.shortages(), DB.weekly(), DB.monthlyAll()])
       .then(([emps, advances, shortages, weekly, monthly]) => setData({ emps, advances, shortages, weekly, monthly }))
@@ -194,43 +197,203 @@ export function Deductions() {
   if (!data) return <Layout title="📋 Deduction Master"><Spinner /></Layout>
   const { emps, advances, shortages, weekly, monthly } = data
 
+  // Precalculate stats for all employees
+  const empStats = emps.map(e => {
+    const advGiven = DB.totalAdvGiven(e.name, advances)
+    const advDeducted = DB.totalAdvDeducted(e.name, weekly, monthly)
+    const advPending = advGiven - advDeducted
+
+    const shrGiven = DB.totalShrGiven(e.name, shortages)
+    const shrDeducted = DB.totalShrDeducted(e.name, weekly, monthly)
+    const shrPending = shrGiven - shrDeducted
+
+    const hasAdv = advGiven > 0 || advDeducted > 0 || advPending > 0
+    const hasShr = shrGiven > 0 || shrDeducted > 0 || shrPending > 0
+
+    return {
+      id: e.id,
+      emp_id: e.emp_id,
+      name: e.name,
+      advGiven, advDeducted, advPending, hasAdv,
+      shrGiven, shrDeducted, shrPending, hasShr
+    }
+  })
+
+  // Filtered lists for display
+  const cleanSearch = search.trim().toLowerCase()
+
+  const advList = empStats.filter(s => {
+    const match = !cleanSearch || s.name.toLowerCase().includes(cleanSearch) || (s.emp_id && s.emp_id.toLowerCase().includes(cleanSearch))
+    return match && (showAll || s.hasAdv)
+  })
+
+  const shrList = empStats.filter(s => {
+    const match = !cleanSearch || s.name.toLowerCase().includes(cleanSearch) || (s.emp_id && s.emp_id.toLowerCase().includes(cleanSearch))
+    return match && (showAll || s.hasShr)
+  })
+
+  // Summary Totals
+  const totalAdvGiven = empStats.reduce((s, x) => s + x.advGiven, 0)
+  const totalAdvDeducted = empStats.reduce((s, x) => s + x.advDeducted, 0)
+  const totalAdvPending = totalAdvGiven - totalAdvDeducted
+
+  const totalShrGiven = empStats.reduce((s, x) => s + x.shrGiven, 0)
+  const totalShrDeducted = empStats.reduce((s, x) => s + x.shrDeducted, 0)
+  const totalShrPending = totalShrGiven - totalShrDeducted
+
+  const activeAdvCount = empStats.filter(x => x.advPending > 0).length
+  const activeShrCount = empStats.filter(x => x.shrPending > 0).length
+
   return (
     <Layout title="📋 Deduction Master">
-      <div style={{ background: 'var(--yellow)', borderRadius: 10, padding: '12px 18px', marginBottom: 18, fontSize: 13 }}>
-        📌 Fully automatic — calculated from Advance Log, Shortage Log and Weekly Entry.
+      {/* ── TOP KPI SUMMARY CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 20 }}>
+        <div className="glass-panel" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--slate)', textTransform: 'uppercase' }}>Pending Advances</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)', margin: '4px 0 2px' }}>{fmt(totalAdvPending)}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)' }}>{activeAdvCount} staff with outstanding advance</div>
+          </div>
+          <div style={{ background: '#E0F2FE', color: '#0369A1', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>💰</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--slate)', textTransform: 'uppercase' }}>Pending Shortages</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--brit-red)', margin: '4px 0 2px' }}>{fmt(totalShrPending)}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)' }}>{activeShrCount} staff with pending shortage</div>
+          </div>
+          <div style={{ background: '#FEE2E2', color: '#DC2626', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⚠️</div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--slate)', textTransform: 'uppercase' }}>Total Deductions Outstanding</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--brit-red)', margin: '4px 0 2px' }}>{fmt(totalAdvPending + totalShrPending)}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)' }}>Combined advance & shortage balance</div>
+          </div>
+          <div style={{ background: '#FEF3C7', color: '#D97706', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📊</div>
+        </div>
       </div>
-      <div className="dashboard-main-grid">
-        <Panel title="💰 Advance Summary" noPad>
-          <div className="tbl-wrap">            <table>
-              <thead><tr><th>Employee</th><th>Given</th><th>Deducted</th><th>Pending</th></tr></thead>
+
+      {/* ── TOOLBAR & CONTROLS ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
+        <div className="search-box" style={{ maxWidth: 340 }}>
+          <input 
+            placeholder="Search employee by name or ID..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)' }}>
+            Showing: <strong>{showAll ? `All ${emps.length} Staff` : `Only Staff with Deductions (${empStats.filter(s => s.hasAdv || s.hasShr).length})`}</strong>
+          </span>
+          <button 
+            type="button" 
+            className="btn btn-sm" 
+            style={{ 
+              background: showAll ? 'var(--navy)' : 'var(--brit-cream-light)', 
+              color: showAll ? '#FFFFFF' : 'var(--navy)',
+              border: '1.5px solid var(--border)',
+              fontWeight: 800
+            }}
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? 'Show Active Deductions Only' : 'Show All Employees'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── EQUAL 2-COLUMN ALIGNED LAYOUT ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 20, alignItems: 'start' }}>
+        {/* Left Column: Advance Summary */}
+        <Panel title="💰 Advance Summary" subtitle="Staff Advance Loans & Recoveries" noPad>
+          <div className="tbl-wrap">
+            <table style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '40%' }}>Employee</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Given</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Deducted</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Pending</th>
+                </tr>
+              </thead>
               <tbody>
-                {emps.map(e => {
-                  const g = DB.totalAdvGiven(e.name, advances), d = DB.totalAdvDeducted(e.name, weekly, monthly), p = g - d
-                  return <tr key={e.id}><td><strong style={{ fontSize: 12 }}>{e.name}</strong></td><td className="amt amt-blue">{fmt(g)}</td><td className="amt">{fmt(d)}</td><td className={`amt ${p > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(p)}</td></tr>
-                })}
-                <tr style={{ background: 'var(--navy)', color: '#fff', fontWeight: 700 }}>
-                  <td>TOTAL</td>
-                  <td className="amt" style={{ color: '#7dd3fc', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalAdvGiven(e.name,advances),0))}</td>
-                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalAdvDeducted(e.name,weekly,monthly),0))}</td>
-                  <td className="amt" style={{ color: '#86efac', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.advPending(e.name,advances,weekly,monthly),0))}</td>
+                {advList.map(s => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong style={{ fontSize: 13, color: 'var(--navy)' }}>{s.name}</strong>
+                      {s.emp_id && <div style={{ fontSize: 10, color: 'var(--slate)', fontWeight: 700 }}>{s.emp_id}</div>}
+                    </td>
+                    <td className="amt amt-blue" style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(s.advGiven)}</td>
+                    <td className="amt" style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(s.advDeducted)}</td>
+                    <td className={`amt ${s.advPending > 0 ? 'amt-red' : 'amt-green'}`} style={{ textAlign: 'right', fontWeight: 900 }}>
+                      {fmt(s.advPending)}
+                    </td>
+                  </tr>
+                ))}
+
+                {advList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--slate)', fontWeight: 600 }}>
+                      No staff with advance balances found.
+                    </td>
+                  </tr>
+                )}
+
+                <tr style={{ background: 'var(--navy)', color: '#FFFFFF', fontWeight: 800 }}>
+                  <td>TOTAL ADVANCE</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#7DD3FC', fontFamily: 'var(--mono)' }}>{fmt(totalAdvGiven)}</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#FFFFFF', fontFamily: 'var(--mono)' }}>{fmt(totalAdvDeducted)}</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#86EFAC', fontFamily: 'var(--mono)', fontSize: 14 }}>{fmt(totalAdvPending)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </Panel>
-        <Panel title="⚠️ Shortage Summary" headerColor="var(--red)" noPad>
-          <div className="tbl-wrap">            <table>
-              <thead><tr><th>Employee</th><th>Total</th><th>Deducted</th><th>Pending</th></tr></thead>
+
+        {/* Right Column: Shortage Summary */}
+        <Panel title="⚠️ Shortage Summary" subtitle="Staff Shortages & Deductions" headerColor="var(--brit-red)" noPad>
+          <div className="tbl-wrap">
+            <table style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '40%' }}>Employee</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Given</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Deducted</th>
+                  <th style={{ textAlign: 'right', width: '20%' }}>Pending</th>
+                </tr>
+              </thead>
               <tbody>
-                {emps.map(e => {
-                  const g = DB.totalShrGiven(e.name, shortages), d = DB.totalShrDeducted(e.name, weekly, monthly), p = g - d
-                  return <tr key={e.id}><td><strong style={{ fontSize: 12 }}>{e.name}</strong></td><td className="amt amt-red">{fmt(g)}</td><td className="amt">{fmt(d)}</td><td className={`amt ${p > 0 ? 'amt-red' : 'amt-green'}`}>{fmt(p)}</td></tr>
-                })}
-                <tr style={{ background: 'var(--red)', color: '#fff', fontWeight: 700 }}>
-                  <td>TOTAL</td>
-                  <td className="amt" style={{ color: '#fca5a5', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalShrGiven(e.name,shortages),0))}</td>
-                  <td className="amt" style={{ fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.totalShrDeducted(e.name,weekly,monthly),0))}</td>
-                  <td className="amt" style={{ color: '#bbf7d0', fontFamily: 'var(--mono)' }}>{fmt(emps.reduce((s,e)=>s+DB.shrPending(e.name,shortages,weekly,monthly),0))}</td>
+                {shrList.map(s => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong style={{ fontSize: 13, color: 'var(--navy)' }}>{s.name}</strong>
+                      {s.emp_id && <div style={{ fontSize: 10, color: 'var(--slate)', fontWeight: 700 }}>{s.emp_id}</div>}
+                    </td>
+                    <td className="amt amt-red" style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(s.shrGiven)}</td>
+                    <td className="amt" style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(s.shrDeducted)}</td>
+                    <td className={`amt ${s.shrPending > 0 ? 'amt-red' : 'amt-green'}`} style={{ textAlign: 'right', fontWeight: 900 }}>
+                      {fmt(s.shrPending)}
+                    </td>
+                  </tr>
+                ))}
+
+                {shrList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--slate)', fontWeight: 600 }}>
+                      No staff with shortage balances found.
+                    </td>
+                  </tr>
+                )}
+
+                <tr style={{ background: 'var(--brit-red)', color: '#FFFFFF', fontWeight: 800 }}>
+                  <td>TOTAL SHORTAGE</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#FCA5A5', fontFamily: 'var(--mono)' }}>{fmt(totalShrGiven)}</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#FFFFFF', fontFamily: 'var(--mono)' }}>{fmt(totalShrDeducted)}</td>
+                  <td className="amt" style={{ textAlign: 'right', color: '#BBF7D0', fontFamily: 'var(--mono)', fontSize: 14 }}>{fmt(totalShrPending)}</td>
                 </tr>
               </tbody>
             </table>
