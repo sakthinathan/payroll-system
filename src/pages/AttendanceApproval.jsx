@@ -163,10 +163,16 @@ export default function AttendanceApproval() {
           }
 
           // Otherwise, inspect live selfie punch logs
-          const matchingLog = logs.find(l => 
-            (l.emp_name === emp.name || l.emp_id === emp.emp_id) && 
-            l.date === d.dateStr
-          )
+          const matchingLog = logs.find(l => {
+            if (l.date !== d.dateStr) return false
+            const lName = String(l.emp_name || '').trim().toUpperCase()
+            const eName = String(emp.name || '').trim().toUpperCase()
+            const lEmpId = String(l.emp_id || '').trim().toUpperCase()
+            const eEmpId = String(emp.emp_id || '').trim().toUpperCase()
+            const eDbId = String(emp.id || '').trim().toUpperCase()
+
+            return (lName && lName === eName) || (eEmpId && lEmpId === eEmpId) || (eDbId && lEmpId === eDbId)
+          })
 
           if (matchingLog) {
             if (matchingLog.status === 'half_day' || (matchingLog.hours_worked > 0 && matchingLog.hours_worked < 5)) {
@@ -193,10 +199,18 @@ export default function AttendanceApproval() {
 
   // Helper to find punch log details for an employee on a date
   const getLogForCell = useCallback((empName, dateStr) => {
-    return logs.find(l => 
-      (l.emp_name === empName || empMap[empName]?.emp_id === l.emp_id) && 
-      l.date === dateStr
-    )
+    const emp = empMap[empName]
+    const eName = String(empName || '').trim().toUpperCase()
+    const eEmpId = String(emp?.emp_id || '').trim().toUpperCase()
+    const eDbId = String(emp?.id || '').trim().toUpperCase()
+
+    return logs.find(l => {
+      if (l.date !== dateStr) return false
+      const lName = String(l.emp_name || '').trim().toUpperCase()
+      const lEmpId = String(l.emp_id || '').trim().toUpperCase()
+
+      return (lName && lName === eName) || (eEmpId && lEmpId === eEmpId) || (eDbId && lEmpId === eDbId)
+    })
   }, [logs, empMap])
 
   // Toggle status for an employee on a specific date (P -> HD -> A -> OFF -> P)

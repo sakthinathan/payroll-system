@@ -362,7 +362,8 @@ export default function EmployeePortal({ defaultTab }) {
     if (actionType === 'in') {
       const newLog = {
         id: uid(),
-        emp_id: currentEmployee.id,
+        emp_id: currentEmployee.emp_id || currentEmployee.id,
+        emp_db_id: currentEmployee.id,
         emp_name: currentEmployee.name,
         date: todayStr,
         check_in_time: timeString,

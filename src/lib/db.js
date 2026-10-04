@@ -528,22 +528,23 @@ export const DB = {
   _writeLocalAttLog: log => {
     if (typeof window === 'undefined' || !window.localStorage) return
     const local = DB._localAttLogs()
-    const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date))
+    const idx = local.findIndex(l => l.id === log.id || (l.emp_id === log.emp_id && l.date === log.date) || (l.emp_name === log.emp_name && l.date === log.date))
     if (idx >= 0) local[idx] = { ...local[idx], ...log }
     else local.unshift(log)
     try { window.localStorage.setItem('thulir_attendance_logs', JSON.stringify(local)) } catch { /* quota */ }
   },
 
   _saveAttLogCloud: async log => {
-    const { error } = await supabase.from('settings').upsert({ key: DB._attLogKey(log), value: JSON.stringify(log) })
+    const key = DB._attLogKey(log)
+    const { error } = await supabase.from('settings').upsert({ key, value: JSON.stringify(log) })
     if (error) throw error
   },
 
   attendanceLogs: () => cachedQuery('attendanceLogs', async () => {
-    // 1) Dedicated table, if present
+    // 1) Dedicated table, if present & populated
     try {
       const { data, error } = await supabase.from('attendance_logs').select('*').order('created_at', { ascending: false })
-      if (!error && data) return data
+      if (!error && data && data.length > 0) return data
     } catch (e) { /* fall through */ }
 
     // 2) Cloud settings rows
@@ -551,7 +552,13 @@ export const DB = {
     try {
       const { data, error } = await supabase.from('settings').select('key,value').like('key', 'attlog_%')
       if (!error && data) {
-        data.forEach(r => { try { byKey[r.key] = JSON.parse(r.value) } catch { /* skip bad row */ } })
+        data.forEach(r => {
+          try { 
+            const parsed = JSON.parse(r.value)
+            const uniqKey = `${parsed.date || 'nodate'}_${parsed.emp_id || parsed.emp_name || r.key}`
+            byKey[uniqKey] = { ...(byKey[uniqKey] || {}), ...parsed }
+          } catch { /* skip bad row */ }
+        })
       }
     } catch (e) {
       console.warn('Cloud attendance logs unavailable, using local cache')
@@ -559,11 +566,11 @@ export const DB = {
 
     // 3) Merge local logs; upload any that never reached the cloud
     for (const l of DB._localAttLogs()) {
-      const k = DB._attLogKey(l)
-      const cloud = byKey[k]
+      const uniqKey = `${l.date || 'nodate'}_${l.emp_id || l.emp_name || l.id}`
+      const cloud = byKey[uniqKey]
       if (!cloud || (!cloud.check_out_time && l.check_out_time) || (cloud.status !== 'approved' && l.status === 'approved')) {
-        byKey[k] = { ...(cloud || {}), ...l }
-        try { await DB._saveAttLogCloud(byKey[k]) } catch { /* offline – retry next load */ }
+        byKey[uniqKey] = { ...(cloud || {}), ...l }
+        try { await DB._saveAttLogCloud(byKey[uniqKey]) } catch { /* offline – retry next load */ }
       }
     }
 
@@ -576,13 +583,17 @@ export const DB = {
     DB._writeLocalAttLog(log)
     try {
       const { error } = await supabase.from('attendance_logs').upsert(log)
-      if (!error) return log
+      if (!error) {
+        cache.clear()
+        return log
+      }
     } catch (e) { /* fall through */ }
     try {
       await DB._saveAttLogCloud(log)
     } catch (e) {
       console.warn('Attendance cloud save failed; kept locally and will retry', e)
     }
+    cache.clear()
     return log
   },
 
