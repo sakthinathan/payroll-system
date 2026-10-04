@@ -512,11 +512,66 @@ export default function AttendanceApproval() {
             </span>
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)', margin: '6px 0 2px' }}>
-            Weekly Attendance Register & Approval
+            {isMonthlyMode ? '🗓️ Monthly Staff Attendance Register' : '📋 Weekly Staff Attendance Register'}
           </h2>
           <p style={{ color: 'var(--slate)', fontSize: 13, fontWeight: 600 }}>
-            Review daily selfie check-ins • Modify Present / Half Day / Absent • Auto-sync directly into Weekly Payroll calculations
+            Review daily selfie check-ins • Modify Present / Half Day / Absent • Auto-sync directly into {isMonthlyMode ? 'Monthly' : 'Weekly'} Payroll calculations
           </p>
+
+          {/* Roster Type Selector Segment Toggle (Weekly vs Monthly vs All) */}
+          <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: 4, borderRadius: 9999, border: '1.5px solid var(--border)', marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => setEmpFilter('weekly')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 9999,
+                fontSize: 12,
+                fontWeight: 800,
+                background: empFilter === 'weekly' ? 'var(--brit-red)' : 'transparent',
+                color: empFilter === 'weekly' ? '#FFFFFF' : 'var(--navy)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              📅 Weekly Staff ({emps.filter(e => e.salary_type === 'weekly' || !e.salary_type).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setEmpFilter('monthly')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 9999,
+                fontSize: 12,
+                fontWeight: 800,
+                background: empFilter === 'monthly' ? 'var(--navy)' : 'transparent',
+                color: empFilter === 'monthly' ? '#FFFFFF' : 'var(--navy)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              🗓️ Monthly Staff ({emps.filter(e => e.salary_type === 'monthly').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setEmpFilter('all')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 9999,
+                fontSize: 12,
+                fontWeight: 800,
+                background: empFilter === 'all' ? 'var(--slate)' : 'transparent',
+                color: empFilter === 'all' ? '#FFFFFF' : 'var(--navy)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              👥 All Staff ({emps.length})
+            </button>
+          </div>
         </div>
 
         {/* Period Selector Dropdown & Sync CTA */}
@@ -573,7 +628,7 @@ export default function AttendanceApproval() {
             onClick={() => setSyncModalOpen(true)}
           >
             <ShieldCheck size={18} />
-            <span>Approve & Sync to Weekly Payroll</span>
+            <span>Approve & Sync to {isMonthlyMode ? 'Monthly' : 'Weekly'} Payroll</span>
           </button>
         </div>
       </div>
@@ -587,7 +642,7 @@ export default function AttendanceApproval() {
           <div>
             <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--slate)', textTransform: 'uppercase' }}>Staff in Period</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--navy)' }}>{aggregateStats.totalStaff} Staff</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)' }}>Weekly active roster</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)' }}>{isMonthlyMode ? 'Monthly active roster' : 'Weekly active roster'}</div>
           </div>
         </div>
 
@@ -643,7 +698,7 @@ export default function AttendanceApproval() {
             onClick={() => setActiveTab('sheet')}
           >
             <Calendar size={16} />
-            <span>📋 Weekly Attendance Register (Sheet)</span>
+            <span>📋 {isMonthlyMode ? 'Monthly Attendance Register (Sheet)' : 'Weekly Attendance Register (Sheet)'}</span>
           </button>
 
           <button 
