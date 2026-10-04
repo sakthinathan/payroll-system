@@ -677,6 +677,51 @@ export const DB = {
     return results
   },
 
+  syncAttendanceToMonthlyPayroll: async (periodId, periodLabel, periodDate, staffAttendanceList) => {
+    cache.clear()
+    const existingEntries = await DB.monthlyByPeriod(periodId, periodLabel)
+    const existingMap = {}
+    existingEntries.forEach(e => { existingMap[e.name] = e })
+
+    const results = []
+    for (const item of staffAttendanceList) {
+      const existing = existingMap[item.empName]
+      const daysWorked = Number(item.daysWorked) || 0
+      const leaves = Number(item.leaves) || 0
+      if (existing) {
+        await DB.updateMonthly({
+          id: existing.id,
+          name: existing.name,
+          monthLabel: existing.month_label,
+          date: existing.date,
+          daysWorked,
+          leaves,
+          advDeducted: Number(existing.adv_deducted || 0),
+          shrDeducted: Number(existing.shr_deducted || 0),
+          additionalSalary: Number(existing.additional_salary || 0),
+          additionalWorkType: existing.additional_work_type || ''
+        })
+        results.push({ name: item.empName, daysWorked, leaves, status: 'updated' })
+      } else {
+        await DB.saveMonthly({
+          id: uid(),
+          name: item.empName,
+          monthLabel: periodLabel || item.monthLabel || 'Monthly Payroll',
+          date: periodDate || item.date || new Date().toISOString().slice(0, 10),
+          daysWorked,
+          leaves,
+          advDeducted: 0,
+          shrDeducted: 0,
+          additionalSalary: 0,
+          additionalWorkType: '',
+          periodId: periodId
+        })
+        results.push({ name: item.empName, daysWorked, leaves, status: 'created' })
+      }
+    }
+    return results
+  },
+
   // ── High-performance Lookup Helpers ───────────────────────────────
   createEmpMap: (emps) => {
     const map = {}; emps.forEach(e => map[e.name] = e); return map;

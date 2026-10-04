@@ -46,8 +46,10 @@ export default function AttendanceApproval() {
   const [logs, setLogs] = useState([])
   const [emps, setEmps] = useState([])
   const [periods, setPeriods] = useState([])
+  const [monthlyPeriods, setMonthlyPeriods] = useState([])
   const [workingDays, setWorkingDays] = useState(27)
   const [selectedPeriodId, setSelectedPeriodId] = useState('')
+  const [selectedMonthlyPeriodId, setSelectedMonthlyPeriodId] = useState('')
   const [activeTab, setActiveTab] = useState('sheet') // 'sheet' | 'punches'
   const [empFilter, setEmpFilter] = useState('weekly') // 'weekly' | 'all' | 'monthly'
   const [loading, setLoading] = useState(true)
@@ -63,21 +65,29 @@ export default function AttendanceApproval() {
 
   const loadData = useCallback(async () => {
     try {
-      const [allLogs, empList, periodList, wd] = await Promise.all([
+      const [allLogs, empList, periodList, mPeriodList, wd] = await Promise.all([
         DB.attendanceLogs(),
         DB.employees(),
         DB.periods(),
+        DB.monthlyPeriods(),
         DB.getWorkingDays()
       ])
       setLogs(allLogs || [])
       setEmps(empList || [])
       setPeriods(periodList || [])
+      setMonthlyPeriods(mPeriodList || [])
       setWorkingDays(wd || 27)
 
-      // Set initial selected period to open period or most recent period
+      // Initial selected weekly period
       if (periodList && periodList.length > 0 && !selectedPeriodId) {
         const openP = periodList.find(p => p.status === 'open')
         setSelectedPeriodId(openP ? openP.id : periodList[0].id)
+      }
+
+      // Initial selected monthly period
+      if (mPeriodList && mPeriodList.length > 0 && !selectedMonthlyPeriodId) {
+        const openMP = mPeriodList.find(p => p.status === 'open')
+        setSelectedMonthlyPeriodId(openMP ? openMP.id : mPeriodList[0].id)
       }
     } catch (e) {
       console.error('Error loading attendance review data:', e)
@@ -85,16 +95,35 @@ export default function AttendanceApproval() {
     } finally {
       setLoading(false)
     }
-  }, [selectedPeriodId])
+  }, [selectedPeriodId, selectedMonthlyPeriodId])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
+  const isMonthlyMode = empFilter === 'monthly'
+
   const selectedPeriod = useMemo(() => {
+    if (isMonthlyMode) {
+      if (!monthlyPeriods.length) return null
+      const p = monthlyPeriods.find(x => x.id === selectedMonthlyPeriodId) || monthlyPeriods[0]
+      if (p) {
+        return {
+          id: p.id,
+          label: p.month_label || p.month_name || 'Monthly Period',
+          date_from: p.date_from || p.date || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`,
+          date_to: p.date_to || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}`,
+          status: p.status,
+          isMonthly: true
+        }
+      }
+      return null
+    }
+
     if (!periods.length) return null
-    return periods.find(p => p.id === selectedPeriodId) || periods[0]
-  }, [periods, selectedPeriodId])
+    const p = periods.find(x => x.id === selectedPeriodId) || periods[0]
+    return { ...p, isMonthly: false }
+  }, [periods, monthlyPeriods, selectedPeriodId, selectedMonthlyPeriodId, isMonthlyMode])
 
   const periodDates = useMemo(() => {
     if (!selectedPeriod) return []
@@ -298,7 +327,7 @@ export default function AttendanceApproval() {
     }
   }, [filteredEmployees, attendanceSheet, periodDates])
 
-  // Sync to Weekly Payroll Entries
+  // Sync to Weekly / Monthly Payroll Entries
   const handleApproveAndSync = async () => {
     if (!selectedPeriod) {
       toast.error('No payroll period selected.')
@@ -307,27 +336,35 @@ export default function AttendanceApproval() {
 
     setSyncing(true)
     try {
-      const scheduledDays = periodDates.filter(d => !d.isSunday).length || 6
-
       // 1. Build payload for each employee
       const payload = filteredEmployees.map(emp => {
         const stats = getEmployeeStats(emp.name)
         return {
           empName: emp.name,
-          daysWorked: scheduledDays,
+          daysWorked: stats.daysWorked,
           leaves: stats.leaves,
           weekLabel: selectedPeriod.label,
+          monthLabel: selectedPeriod.label,
           date: selectedPeriod.date_from
         }
       })
 
-      // 2. Sync into weekly_entries
-      await DB.syncAttendanceToWeeklyPayroll(
-        selectedPeriod.id, 
-        selectedPeriod.label, 
-        selectedPeriod.date_from, 
-        payload
-      )
+      // 2. Sync into weekly_entries or monthly_entries
+      if (selectedPeriod.isMonthly) {
+        await DB.syncAttendanceToMonthlyPayroll(
+          selectedPeriod.id, 
+          selectedPeriod.label, 
+          selectedPeriod.date_from, 
+          payload
+        )
+      } else {
+        await DB.syncAttendanceToWeeklyPayroll(
+          selectedPeriod.id, 
+          selectedPeriod.label, 
+          selectedPeriod.date_from, 
+          payload
+        )
+      }
 
       // 3. Save the attendance sheet configuration to DB
       await DB.saveAttendanceSheet(selectedPeriod.id, attendanceSheet)
@@ -341,14 +378,14 @@ export default function AttendanceApproval() {
       }
 
       toast.success(
-        `✅ Attendance approved & synced to "${selectedPeriod.label}"! Updated ${payload.length} staff entries.`,
+        `✅ Attendance approved & synced to ${selectedPeriod.isMonthly ? 'Monthly' : 'Weekly'} Payroll "${selectedPeriod.label}"! Updated ${payload.length} staff entries.`,
         { duration: 5000 }
       )
       setSyncModalOpen(false)
       loadData()
     } catch (err) {
-      console.error('Error syncing attendance to weekly payroll:', err)
-      toast.error('Failed to sync attendance to weekly payroll')
+      console.error('Error syncing attendance to payroll:', err)
+      toast.error('Failed to sync attendance to payroll')
     } finally {
       setSyncing(false)
     }
@@ -435,21 +472,37 @@ export default function AttendanceApproval() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--slate)', textTransform: 'uppercase', marginBottom: 4 }}>
-              Select Payroll Week:
+              {isMonthlyMode ? 'Select Monthly Cycle:' : 'Select Payroll Week:'}
             </div>
-            <select 
-              className="form-input" 
-              style={{ fontWeight: 800, color: 'var(--navy)', minWidth: 280, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)' }}
-              value={selectedPeriodId}
-              onChange={e => setSelectedPeriodId(e.target.value)}
-            >
-              {periods.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.label} ({p.date_from ? new Date(p.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''} - {p.date_to ? new Date(p.date_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}) — {p.status === 'open' ? '🟢 Active' : '📁 Closed'}
-                </option>
-              ))}
-              {!periods.length && <option value="">No periods found</option>}
-            </select>
+            {isMonthlyMode ? (
+              <select 
+                className="form-input" 
+                style={{ fontWeight: 800, color: 'var(--navy)', minWidth: 280, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)' }}
+                value={selectedMonthlyPeriodId}
+                onChange={e => setSelectedMonthlyPeriodId(e.target.value)}
+              >
+                {monthlyPeriods.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.month_label || p.month_name} ({p.date_from ? new Date(p.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : (p.date ? new Date(p.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '')} - {p.date_to ? new Date(p.date_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}) — {p.status === 'open' ? '🟢 Active' : '📁 Closed'}
+                  </option>
+                ))}
+                {!monthlyPeriods.length && <option value="">No monthly periods found</option>}
+              </select>
+            ) : (
+              <select 
+                className="form-input" 
+                style={{ fontWeight: 800, color: 'var(--navy)', minWidth: 280, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)' }}
+                value={selectedPeriodId}
+                onChange={e => setSelectedPeriodId(e.target.value)}
+              >
+                {periods.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.label} ({p.date_from ? new Date(p.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''} - {p.date_to ? new Date(p.date_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}) — {p.status === 'open' ? '🟢 Active' : '📁 Closed'}
+                  </option>
+                ))}
+                {!periods.length && <option value="">No weekly periods found</option>}
+              </select>
+            )}
           </div>
 
           <button 
