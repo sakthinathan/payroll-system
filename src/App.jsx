@@ -58,10 +58,17 @@ function AdminOnly({ children }) {
 function LoginRoute() {
   const { user, role } = useAuth()
   const location = useLocation()
-  const target = location.state?.from?.pathname || (role === 'employee' ? '/my-attendance' : localStorage.getItem('last_visited_route') || '/')
   
   if (user) {
-    return <Navigate to={target} replace />
+    if (role === 'employee') {
+      const from = location.state?.from?.pathname
+      const target = from && from.startsWith('/my-') ? from : '/my-attendance'
+      return <Navigate to={target} replace />
+    } else {
+      const from = location.state?.from?.pathname || localStorage.getItem('last_visited_route')
+      const target = from && !from.startsWith('/my-') ? from : '/'
+      return <Navigate to={target} replace />
+    }
   }
   return <Login />
 }

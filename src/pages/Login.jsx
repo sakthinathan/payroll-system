@@ -21,7 +21,8 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = location.state?.from?.pathname || localStorage.getItem('last_visited_route') || '/'
+  const targetFrom = location.state?.from?.pathname
+  const validAdminFrom = targetFrom && !targetFrom.startsWith('/my-') ? targetFrom : '/'
 
   const doAdminLogin = async (e) => {
     e?.preventDefault()
@@ -29,7 +30,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate(from, { replace: true })
+      navigate(validAdminFrom, { replace: true })
     } catch (err) {
       setLoading(false)
       setError(err.message || 'Invalid email or password')

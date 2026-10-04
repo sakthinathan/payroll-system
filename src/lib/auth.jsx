@@ -10,21 +10,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 1. Check for stored employee session
-    const storedEmp = localStorage.getItem('thulir_current_employee')
-    if (storedEmp) {
-      try {
-        const emp = JSON.parse(storedEmp)
-        setCurrentEmployee(emp)
-        setRole('employee')
-        setUser({ email: `${emp.emp_id || 'emp'}@thuliragency.com`, id: emp.id, name: emp.name })
-        setLoading(false)
-        return
-      } catch (e) {}
-    }
-
-    // Check for stored local admin session (e.g. for development / testing)
+    // 1. Check for stored admin session first
     const storedAdmin = localStorage.getItem('thulir_admin_session')
+    const storedEmp = localStorage.getItem('thulir_current_employee')
+
     if (storedAdmin) {
       try {
         const adm = JSON.parse(storedAdmin)
@@ -36,11 +25,23 @@ export function AuthProvider({ children }) {
       } catch (e) {}
     }
 
+    if (storedEmp) {
+      try {
+        const emp = JSON.parse(storedEmp)
+        setCurrentEmployee(emp)
+        setRole('employee')
+        setUser({ email: `${emp.emp_id || 'emp'}@thuliragency.com`, id: emp.id, name: emp.name })
+        setLoading(false)
+        return
+      } catch (e) {}
+    }
+
     // 2. Check for current Supabase session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user)
         setRole('admin')
+        setCurrentEmployee(null)
       }
       setLoading(false)
     })
@@ -50,6 +51,7 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         setUser(session.user)
         setRole('admin')
+        setCurrentEmployee(null)
       }
       setLoading(false)
     })
@@ -58,13 +60,14 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async (email, password) => {
+    localStorage.removeItem('thulir_current_employee')
+    localStorage.removeItem('last_visited_route')
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       setUser(data.user)
       setRole('admin')
       setCurrentEmployee(null)
-      localStorage.removeItem('thulir_current_employee')
       localStorage.setItem('thulir_admin_session', JSON.stringify({ email: data.user.email, id: data.user.id }))
       return data
     } catch (err) {
@@ -74,7 +77,6 @@ export function AuthProvider({ children }) {
         setUser(mockAdmin)
         setRole('admin')
         setCurrentEmployee(null)
-        localStorage.removeItem('thulir_current_employee')
         localStorage.setItem('thulir_admin_session', JSON.stringify(mockAdmin))
         return { user: mockAdmin }
       }
@@ -83,6 +85,10 @@ export function AuthProvider({ children }) {
   }
 
   const loginAsEmployee = async (empIdentifier, pinCode) => {
+    localStorage.removeItem('thulir_admin_session')
+    localStorage.removeItem('last_visited_route')
+    try { await supabase.auth.signOut() } catch (e) {}
+
     const emps = await DB.employees()
     const cleanId = String(empIdentifier).trim().toLowerCase()
     const cleanPin = String(pinCode).trim()
@@ -151,6 +157,7 @@ export function AuthProvider({ children }) {
     setCurrentEmployee(null)
     localStorage.removeItem('thulir_current_employee')
     localStorage.removeItem('thulir_admin_session')
+    localStorage.removeItem('last_visited_route')
   }
 
   return (
