@@ -9,7 +9,7 @@ import {
   CheckCircle2, AlertTriangle, MapPin, Camera, 
   ShieldCheck, UserCheck, CheckSquare, ExternalLink,
   Calendar, Clock, ArrowRight, RefreshCw, Sparkles,
-  Users, Check, X, Eye
+  Users, Check, X, Eye, XCircle
 } from 'lucide-react'
 
 // Helper to generate all calendar dates in a period
@@ -418,6 +418,43 @@ export default function AttendanceApproval() {
     loadData()
   }
 
+  const rejectSelectedLogs = async () => {
+    if (selectedLogIds.size === 0) {
+      toast.error('Please select attendance logs to reject.')
+      return
+    }
+    await DB.rejectAttendanceLogs(Array.from(selectedLogIds))
+    toast.error(`${selectedLogIds.size} Attendance Logs Rejected ❌`)
+    setSelectedLogIds(new Set())
+    loadData()
+  }
+
+  const approveSingleLog = async (log) => {
+    if (!log?.id) return
+    await DB.approveAttendanceLogs([log.id])
+    if (log.emp_name && log.date) {
+      setDayStatus(log.emp_name, log.date, 'P')
+    }
+    toast.success(`Punch approved for ${log.emp_name} ✅`)
+    if (photoModal?.id === log.id || photoModal?.date === log.date) {
+      setPhotoModal(null)
+    }
+    loadData()
+  }
+
+  const rejectSingleLog = async (log) => {
+    if (!log?.id) return
+    await DB.rejectAttendanceLogs([log.id])
+    if (log.emp_name && log.date) {
+      setDayStatus(log.emp_name, log.date, 'A')
+    }
+    toast.error(`Punch rejected for ${log.emp_name} ❌ (Marked Absent)`)
+    if (photoModal?.id === log.id || photoModal?.date === log.date) {
+      setPhotoModal(null)
+    }
+    loadData()
+  }
+
   if (loading) {
     return (
       <Layout title="Attendance Review & Approval">
@@ -758,6 +795,7 @@ export default function AttendanceApproval() {
                               {hasSelfie && (
                                 <div 
                                   onClick={() => setPhotoModal({
+                                    id: log?.id,
                                     name: emp.name,
                                     live: log.check_in_photo,
                                     ref: emp.profile_photo,
@@ -766,7 +804,9 @@ export default function AttendanceApproval() {
                                     address: log.check_in_address,
                                     lat: log.check_in_lat,
                                     lng: log.check_in_lng,
-                                    score: log.face_score
+                                    score: log.face_score,
+                                    status: log?.status,
+                                    logObj: log
                                   })}
                                   style={{ 
                                     display: 'flex', 
@@ -837,6 +877,10 @@ export default function AttendanceApproval() {
               <CheckSquare size={16} />
               <span>{selectedLogIds.size === logs.length ? 'Deselect All' : 'Select All'}</span>
             </button>
+            <button className="btn btn-sm" style={{ background: '#FEE2E2', border: '1.5px solid #FCA5A5', color: '#991B1B', fontWeight: 800 }} onClick={rejectSelectedLogs}>
+              <XCircle size={16} />
+              <span>Reject Selected ({selectedLogIds.size})</span>
+            </button>
             <button className="btn btn-sm btn-primary" onClick={approveSelectedLogs}>
               <ShieldCheck size={16} />
               <span>Approve Selected Punches ({selectedLogIds.size})</span>
@@ -853,7 +897,7 @@ export default function AttendanceApproval() {
                   <th>Selfie Photo</th>
                   <th>GPS Location</th>
                   <th>AI Match</th>
-                  <th style={{ textAlign: 'right' }}>Status</th>
+                  <th style={{ textAlign: 'right' }}>Status & Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -882,6 +926,7 @@ export default function AttendanceApproval() {
                           <div 
                             style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
                             onClick={() => setPhotoModal({ 
+                              id: l.id,
                               name: l.emp_name, 
                               live: l.check_in_photo, 
                               ref: emp?.profile_photo,
@@ -890,7 +935,9 @@ export default function AttendanceApproval() {
                               address: l.check_in_address,
                               lat: l.check_in_lat,
                               lng: l.check_in_lng,
-                              score: l.face_score
+                              score: l.face_score,
+                              status: l.status,
+                              logObj: l
                             })}
                           >
                             <img src={l.check_in_photo} alt="Selfie" style={{ width: 44, height: 44, borderRadius: 9999, objectFit: 'cover', border: '2px solid var(--brit-red)' }} />
@@ -921,13 +968,38 @@ export default function AttendanceApproval() {
                         <span className="badge badge-green">🟢 {l.face_score || 92}% Match</span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {l.status === 'approved' ? (
-                          <span className="badge badge-green">Approved ✅</span>
-                        ) : l.status === 'missing_checkout_resolved' ? (
-                          <span className="badge badge-blue">Time Fixed</span>
-                        ) : (
-                          <span className="badge badge-red">Pending Review</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                          {l.status === 'approved' ? (
+                            <span className="badge badge-green">Approved ✅</span>
+                          ) : l.status === 'rejected' ? (
+                            <span className="badge badge-red">Rejected ❌</span>
+                          ) : l.status === 'missing_checkout_resolved' ? (
+                            <span className="badge badge-blue">Time Fixed</span>
+                          ) : (
+                            <span className="badge badge-red">Pending Review</span>
+                          )}
+
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button 
+                              type="button"
+                              className="btn btn-sm"
+                              style={{ background: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC', padding: '4px 8px', fontSize: 11, fontWeight: 800, borderRadius: 6 }}
+                              onClick={() => approveSingleLog(l)}
+                              title="Approve punch"
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              type="button"
+                              className="btn btn-sm"
+                              style={{ background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5', padding: '4px 8px', fontSize: 11, fontWeight: 800, borderRadius: 6 }}
+                              onClick={() => rejectSingleLog(l)}
+                              title="Reject punch & mark Absent"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -1008,6 +1080,35 @@ export default function AttendanceApproval() {
               )}
             </div>
           )}
+
+          {/* Modal Action Footer: Approve / Reject */}
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '2px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)' }}>
+              Current Status: <strong style={{ color: photoModal.status === 'approved' ? 'var(--brit-green)' : photoModal.status === 'rejected' ? '#DC2626' : 'var(--navy)' }}>
+                {photoModal.status ? photoModal.status.toUpperCase() : 'PENDING'}
+              </strong>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: '#FEE2E2', color: '#991B1B', border: '1.5px solid #FCA5A5', fontWeight: 800, borderRadius: 12, padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}
+                onClick={() => rejectSingleLog(photoModal.logObj || { id: photoModal.id, emp_name: photoModal.name, date: photoModal.date })}
+              >
+                <XCircle size={18} />
+                <span>Reject Punch (Mark Absent)</span>
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: '#DCFCE7', color: '#166534', border: '1.5px solid #86EFAC', fontWeight: 800, borderRadius: 12, padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}
+                onClick={() => approveSingleLog(photoModal.logObj || { id: photoModal.id, emp_name: photoModal.name, date: photoModal.date })}
+              >
+                <CheckCircle2 size={18} />
+                <span>Approve Punch</span>
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

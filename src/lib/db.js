@@ -601,6 +601,21 @@ export const DB = {
     cache.clear()
   },
 
+  rejectAttendanceLogs: async (ids) => {
+    cache.clear()
+    try {
+      const { error } = await supabase.from('attendance_logs').update({ status: 'rejected' }).in('id', ids)
+      if (!error) return
+    } catch (e) { /* fall through */ }
+    const all = await DB.attendanceLogs()
+    for (const l of all.filter(x => ids.includes(x.id))) {
+      const updated = { ...l, status: 'rejected' }
+      DB._writeLocalAttLog(updated)
+      try { await DB._saveAttLogCloud(updated) } catch { /* ignore */ }
+    }
+    cache.clear()
+  },
+
   getAttendanceSheet: async (periodId) => {
     if (!periodId) return null
     try {
