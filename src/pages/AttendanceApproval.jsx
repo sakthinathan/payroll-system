@@ -439,13 +439,13 @@ export default function AttendanceApproval() {
             </div>
             <select 
               className="form-input" 
-              style={{ fontWeight: 800, color: 'var(--navy)', minWidth: 220, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)' }}
+              style={{ fontWeight: 800, color: 'var(--navy)', minWidth: 280, padding: '10px 14px', borderRadius: 12, border: '2px solid var(--border)' }}
               value={selectedPeriodId}
               onChange={e => setSelectedPeriodId(e.target.value)}
             >
               {periods.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.label} ({p.status === 'open' ? '🟢 Active' : '📁 Closed'})
+                  {p.label} ({p.date_from ? new Date(p.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''} - {p.date_to ? new Date(p.date_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}) — {p.status === 'open' ? '🟢 Active' : '📁 Closed'}
                 </option>
               ))}
               {!periods.length && <option value="">No periods found</option>}
